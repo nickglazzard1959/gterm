@@ -5,6 +5,7 @@
 
 import pyaudio
 import wave
+import time
 
 class AudioFile:
     """
@@ -35,6 +36,7 @@ class AudioFile:
 
     def close(self):
         """ Graceful shutdown """
+        time.sleep(0.2)
         self.stream.stop_stream()
         self.stream.close()
         self.p.terminate()

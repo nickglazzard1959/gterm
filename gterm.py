@@ -2579,7 +2579,7 @@ class AudioFile:
         Play entire file 
         """
         data = self.wf.readframes(self.chunk)
-        print('frame length =',len(data))
+        #print('frame length =',len(data))
         while len(data) > 0:
             self.stream.write(data)
             data = self.wf.readframes(self.chunk)
@@ -2588,6 +2588,7 @@ class AudioFile:
         """
         Graceful shutdown
         """
+        time.sleep(0.2) # Apparently this is needed ... 
         self.stream.stop_stream()
         self.stream.close()
         self.p.terminate()
