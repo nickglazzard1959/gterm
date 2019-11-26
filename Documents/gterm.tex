@@ -1,0 +1,1256 @@
+%% Based on a TeXnicCenter-Template by Tino Weinkauf.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% HEADER
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\documentclass[a4paper,twoside,11pt]{article}
+% Alternative Options:
+%	Paper Size: a4paper / a5paper / b5paper / letterpaper / legalpaper / executivepaper
+% Duplex: oneside / twoside
+% Base Font Size: 10pt / 11pt / 12pt
+
+
+%% Language %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%\usepackage[USenglish]{babel} %francais, polish, spanish, ...
+%%\usepackage[T1]{fontenc}
+%%\usepackage[ansinew]{inputenc}
+%%\usepackage[utf8x]{inputenc}
+%%\usepackage{polyglossia}
+%%\setdefaultlanguage[babelshorthands]{USenglish}
+
+\usepackage{lmodern} %Type1-font for non-english texts and characters
+
+%% NG: Try the following for sans serif.
+%% Well - take your pick. helvet leaves math in serif. But is otherwise rather nice?
+%%\usepackage[scaled]{helvet}
+%%\usepackage[math]{kurier}  %% Not nice.
+%%\usepackage[math]{iwona}   %% Not nice.
+%%\usepackage{cmbright}      %% Still will not work after installing hfbright.
+%%\renewcommand*\familydefault{\sfdefault}
+
+\usepackage{eulervm}
+\usepackage{url}
+
+%% NG: Try this for colour.
+\usepackage{color}
+
+\usepackage{float}
+
+%% NG: Try this for HTML output
+%% Also choose LaTeX => HTML of course ...
+%%\usepackage[html]{tex4ht}
+
+%% Packages for Graphics & Figures %%%%%%%%%%%%%%%%%%%%%%%%%%
+\usepackage{graphicx} %%For loading graphic files
+%\usepackage{subfig} %%Subfigures inside a figure
+%\usepackage{tikz} %%Generate vector graphics from within LaTeX
+
+%% Please note:
+%% Images can be included using \includegraphics{filename}
+%% resp. using the dialog in the Insert menu.
+%% 
+%% The mode "LaTeX => PDF" allows the following formats:
+%%   .jpg  .png  .pdf  .mps
+%% 
+%% The modes "LaTeX => DVI", "LaTeX => PS" und "LaTeX => PS => PDF"
+%% allow the following formats:
+%%   .eps  .ps  .bmp  .pict  .pntg
+
+%% NG: Try this to scale graphics to be at most the line length wide.
+%% \includegraphics[width=\maxwidth]{figure}
+\makeatletter
+\def\maxwidth{%
+  \ifdim\Gin@nat@width>\linewidth
+    \linewidth
+  \else
+    \Gin@nat@width
+  \fi
+}
+\makeatother
+
+%% NG: Try fancy chapter headings.
+%% This is Ulf Lindgren's FncyChap package. But set to Sans.
+%\usepackage[Lenny]{fncychap}
+%\ChTitleVar{\Huge\bfseries\sf}
+%\usepackage[Glenn]{fncychap}
+%\ChTitleVar{\Large\bfseries\sf}
+
+%% NG: And we might want text in a box.
+\usepackage{boxedminipage}
+
+%% Math Packages %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\usepackage{amsmath}
+\usepackage{amsthm}
+\usepackage{amsfonts}
+\usepackage{mathrsfs}
+
+
+%% Line Spacing %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%\usepackage{setspace}
+%\singlespacing        %% 1-spacing (default)
+%\onehalfspacing       %% 1,5-spacing
+%\doublespacing        %% 2-spacing
+
+
+%% Other Packages %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\usepackage{a4wide} %%Smaller margins = more text per page.
+\usepackage{fancyhdr} %%Fancy headings
+%\usepackage{longtable} %%For tables, that exceed one page
+
+%% NG: Fancy verbatim text
+\usepackage{relsize,fancyvrb}
+
+%% NG: Font for Creative Commons license thing
+\usepackage{cclicenses}
+
+%% NG: Try barcodes (crumbs!)
+%\usepackage{pst-barcode,pstricks-add}
+
+%% NG: Node diagrams
+\usepackage{pstricks,pst-node}
+
+%% NG: Source code listings
+\usepackage{listings,color}
+\lstloadlanguages{Python}
+\lstdefinestyle{cp}{
+  language=Python,
+  frame=single,
+  showstringspaces=false,
+  basicstyle=\scriptsize\ttfamily
+}
+\lstset{style=cp}
+
+%% NG: For Unicode fonts, including APL in verbatim, with xetex
+\usepackage{xltxtra}
+\usepackage{fontspec}
+\setmainfont[Mapping=tex-text]{Arial}
+\setsansfont[Mapping=tex-text]{Arial}
+\setmonofont{APL385}
+%%\setmonofont{LMMono} Linux OK
+\setmonofont[Scale=0.8]{AndaleMono} 
+
+%% Index
+%\usepackage{makeidx}
+%\makeindex
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Remarks
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+% TODO:
+% 1. Edit the used packages and their options (see above).
+% 2. If you want, add a BibTeX-File to the project
+%    (e.g., 'literature.bib').
+% 3. Happy TeXing!
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Options / Modifications
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%\input{options} %You need a file 'options.tex' for this
+%% ==> TeXnicCenter supplies some possible option files
+%% ==> with its templates (File | New from Template...).
+\newcommand{\newpara}{\par\vspace{4mm}\noindent}
+\newcommand{\myldots}{\ldots\ }
+
+%%\addto\captions{\renewcommand*\abstractname{Summary}}
+
+% Let us try bold text in red ...
+\definecolor{OurRed}{rgb}{0.9,0.1,0.1}
+%%\newcommand{\textbfc}[1]{\textbf{\textcolor{OurRed}{#1}}}
+\newcommand{\textbfc}[1]{\textcolor{OurRed}{#1}}
+
+% And in green ...
+\definecolor{OurGreen}{rgb}{0.1,0.5,0.1}
+\newcommand{\textbfg}[1]{\textbf{\textcolor{OurGreen}{#1}}}
+
+% Alter some LaTeX defaults for better treatment of figures:
+    % See p.105 of "TeX Unbound" for suggested values.
+    % See pp. 199-200 of Lamport's "LaTeX" book for details.
+    %   General parameters, for ALL pages:
+    \renewcommand{\topfraction}{0.9}	% max fraction of floats at top
+    \renewcommand{\bottomfraction}{0.8}	% max fraction of floats at bottom
+    %   Parameters for TEXT pages (not float pages):
+    \setcounter{topnumber}{2}
+    \setcounter{bottomnumber}{2}
+    \setcounter{totalnumber}{4}     % 2 may work better
+    \setcounter{dbltopnumber}{2}    % for 2-column pages
+    \renewcommand{\dbltopfraction}{0.9}	% fit big float above 2-col. text
+    \renewcommand{\textfraction}{0.07}	% allow minimal text w. figs
+    %   Parameters for FLOAT pages (not text pages):
+    \renewcommand{\floatpagefraction}{0.7}	% require fuller float pages
+	% N.B.: floatpagefraction MUST be less than topfraction !!
+    \renewcommand{\dblfloatpagefraction}{0.7}	% require fuller float pages
+
+%% argmin math operator    
+\DeclareMathOperator*{\argmin}{\arg\!\min}
+
+%% Choose to include the giant COMP figures or NOT.
+\newif\ifinclcomp
+\inclcompfalse
+%%\inclcomptrue
+
+\definecolor{titlepagecolor}{cmyk}{1,.60,0,.40}
+
+\usepackage[xetex,unicode,
+	pdftitle={GTerm: A Python Based Telnet Terminal for Unusual Applications},
+	pdfauthor={Nick Glazzard},
+	colorlinks,linkcolor=blue,citecolor=blue,urlcolor=blue
+	]{hyperref}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% DOCUMENT
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{document}
+
+\begin{titlepage}
+\pagecolor{titlepagecolor}
+
+\vspace*{25mm}
+{\color{white} \noindent \rule{\textwidth}{3mm}}
+\begin{center}
+\Huge
+\textcolor{white}{\textbf{GTerm}: A Python Based Telnet Terminal for Unusual Applications}
+\end{center}
+\vspace*{2mm}
+{\color{white} \noindent \rule{\textwidth}{3mm}}
+
+\vspace*{6cm}
+
+\begin{center}
+\Large 
+\textcolor{white}{
+Nick Glazzard\\
+NGIPT\\
+}
+\end{center}
+
+\vspace*{2cm}
+
+\begin{center}
+\Large 
+\textcolor{white}{
+Version 0.4\\
+\today
+}
+\end{center}
+
+\end{titlepage}
+
+\pagecolor{white}
+
+%%\title{\textbf{GTerm}: A Python Based Telnet Terminal for Unusual Applications}
+%%\author{Nick Glazzard}
+%%\date{November 20, 2012}
+%%\maketitle
+
+
+%%\begin{abstract}
+%%Stuff
+%%\end{abstract}
+
+%%\clearpage
+
+%%\tableofcontents
+
+%%\clearpage
+
+\section{Introduction}
+\textbf{GTerm} is a simple terminal emulator written in Python that communicates with some operating system
+or application via the Telnet protocol. It implements a `glass teletype' style of terminal. There is
+no way to move the cursor to arbitrary character positions or do other `VT-100' style tricks.
+\newpara
+There are, however, the following potentially useful features:
+\begin{itemize}
+\item The characters displayed for any 7-bit code are defined by a contents of an image file
+      which is used as a texture map. \textbfc{Any character shape can be accommodated in this way --- e.g. APL characters}.
+\item The texture map is generated from an SVG template with character positions marked out by red lines.
+      By editing this template in Inkscape and inserting the character or drawing you want to get at a
+      location corresponding to a code number, you can have anything you can draw in Inkscape shown as
+      the representation of that code. Tools for making the required texture map from a PNG image
+      file exported from Inkscape are part of \textbf{GTerm}.
+\item \textbfc{In addition to text, there is a separate `graphics plane' in which colour vector graphics can
+      be drawn using a simple set of graphics commands}. 
+\item \textbfc{Characters in the texture map can be chosen to form a virtual keyboard which \textbf{GTerm} can display}.
+      Picking characters on this generates a 7 bit code associated with that character. 
+\item Outgoing characters can be translated in to other single characters or arbitrary strings.
+\item Similarly, incoming characters or strings can be translated to character codes.
+\item All drawing is done by Cairo with decent anti-aliasing. Prior to V0.4, it was done primarily by
+	OpenGL with Cairo doing optional anti-aliased drawing. The anti-aliasing was always used in practice, though,
+	and dropping OpenGL became an obvious simplification.
+\item All input/output is logged to a Unicode text log file. Internal character codes can be associated
+      with any Unicode code point.
+\item Graphics data can be saved to file in SVG format. 
+\item As of version 0.4, command line recall and editing is built in to \textbf{GTerm}, providing this for systems and
+applications that otherwise would not have it. This includes CDC NOS APL (see below). 
+\item Also as of version 0.4, there is a very high level graphics facility (in addition to the original graphics
+scheme) that can be used to plot graphs with almost all the work done by \textbf{GTerm}. Again, this is to support
+the use of APL.
+\end{itemize}
+This may seem like a very strange project (and it is!). There is some method in the madness, though.
+\textbfc{It was primarily written to serve
+as an `application terminal' for an emulated mainframe environment (CDC Cyber 175 running NOS 2.8)}.
+Two things were needed for this (beyond the basics!):
+\begin{itemize}
+\item \textbfc{Provide a way of displaying colour vector graphics}.
+\item \textbfc{Provide a way of using the APL character set with NOS APL 2.} This supports several APL terminals --
+      none of which exist any more in emulation\footnote{True (I believe) in 2013 when 
+      this project started -- but no longer. See a later footnote.}, 
+      as far as I can see. It also supports a `batch mode'
+      where APL characters are represented by two letter codes starting with a dollar sign. \textbf{GTerm} can
+      map internal character codes associated with APL character glyphs to these strings and vice versa.
+\end{itemize}
+Apart from actually wanting to use \textbf{GTerm}, it was an opportunity to play with several new (to me) technologies: PyQt, PyOpenGL,
+Unicode things, PyCairo, Telnet in Python -- including not at all well documented things such as option negotiation -- and
+so on. Having the Telnet communications and all aspects of the terminal emulation available in the easily
+modifiable source code form of a Python program allows for very great flexibility. Just about anything could
+be added if desired, and many things that would be tedious configuration files can just be changed in the source.
+(I realize that way of doing things may not be approved of by some! But I like it.)
+\newpara
+Were there simpler ways of accomplishing the goals than writing \textbf{GTerm}? Well -- it might have been possible to
+modify xterm \ldots but I'm not sure that would have been the better alternative. In fact, I'm pretty sure it wouldn't
+have been. Apart from that, there really didn't seem to be anything beyond xterm's Tektronix 4014 emulation as far
+as graphics went. That is fine -- but it is monochrome and the lines are not anti-aliased. There don't seem to be
+any other `graphics terminal' emulators out there\footnote{As of mid-2019, this is no longer true.
+Rene Richarz has an excellent Tektronix 4014 emulator which reproduces the experience of using that
+device superbly well. It is compact, clean, self contained, C code. It also includes APL (4015) emulation!
+\url{https://github.com/rricharz/Tek4010}}. Perhaps not surprising at this point in time.
+As for using NOS APL 2 batch character codes -- obviously I was going to have to deal with that
+myself somehow.
+\newpara
+On the other hand, I knew very little about how much support now exists for Unicode before starting this project.
+There is actually a very great deal -- native English speakers probably know a lot less about this than other people.
+A full set of APL characters is in Unicode -- although not in any very sensible order as far as I can see. The
+internal character codes I chose for these and other characters are totally arbitrary. I could have made a much
+better attempt at relating these to standards for APL characters and to Unicode. There is some more information
+on these matters in Section \ref{aplinfo}.
+\newpara
+The first version of \textbf{GTerm} was completed in December 2013. The second version added MacOS X support with a 
+simple installer, obviating the need to install many pre-requisites if modification of the source is not required.
+That version was completed in December 2014. Some modifications were made in March 2017 for PyQt 5 compatibility.
+Better backspace handling for APL was added in April 2019, followed by extensive changes for line recall and editing
+as well as the `new graphics commands' in May 2019.
+
+\section{Binary Installation on Mac OS X}
+If no modifications to the source are to be made, there is a drag-and-drop installer for a binary version
+of \textbf{GTerm} on Mac OS X. The binary version is generated from the Python source with PyInstaller, but the
+end result is pretty much identical to a `normal' Mac OS X `app'.\footnote{The only difference as far as a user
+is concerned is that  two instances of \textbf{GTerm} will appear in the Activity Monitor, one of which will be marked
+as `not responding'. PyInstaller binaries package everything required to run an application in a single file -- at
+least, this is the option we use here -- and when the application is run, a bootstrap program executes which
+unpacks the real program (together with all the files it needs) and then runs that. 
+The bootstrap program has to hang around until the real program
+exits. This is the instance that is regarded (correctly) as `not responding'.}
+\newpara
+The binary \textbf{GTerm} for Mac OS X is supplied in a disk image file: \texttt{GTerm.dmg}. To install, double click
+on this file. A window should appear as shown in Figure \ref{fig:inst}.
+\begin{figure}
+	\centering
+		\includegraphics[width=\maxwidth]{installer.eps}
+	\caption{\textbf{GTerm} Binary Installer for Mac OS X}
+	\label{fig:inst}
+\end{figure}
+\newpara
+To install \textbf{GTerm}, simply drag the GTerm.app icon on to the Applications icon. Once installed, \textbf{GTerm} can be launched
+from Applications or Launchpad in the usual way.
+\newpara
+Much of the information below is not relevant to the binary version on Mac OS X. \textbf{GTerm} was originally developed
+on Ubuntu Linux and many of the details mentioned apply to that platform. \textbfc{Skipping to Section} \ref{useit} \textbfc{is recommended!}
+The location of files in the Mac OS X binary version is as follows:
+\begin{itemize}
+\item Host configuration file: \texttt{gtermhostinfo.txt} --- \texttt{/Applications/GTerm.app/Contents/MacOS/}
+\item Log files: \texttt{/tmp/gterm\_log\_yyyy\_mm\_dd\_hh\_mm\_ss.utxt}
+\end{itemize}
+
+\section{Pre-requisites on Ubuntu Linux or for modifying the source code}
+If \textbf{GTerm} is to be run on Ubuntu Linux, or if modifications are desired, the source code version must be installed.
+Unfortunately, \textbf{GTerm} has quite a lot of dependencies. The exact versions are specified, but (presumably!) are not critical.
+\begin{itemize}
+\item Ubuntu 12.04 or later. It has been tested on 12.04, 14.04 and 16.04.  Alternatively, Mac OS X 10.9.5 (Mavericks) or later
+	will also work. It will not work as it is on Windows due to the use of
+      \texttt{select()} on non-socket objects and the \texttt{termios} package. 
+       Porting to Windows may be possible but it is likely to involve significant pain (and I will not be doing it).
+       	Versions of Linux other than Ubuntu should work more or less painlessly, but you never know!
+\item Python 2.7 or later (but not 3.x). It has only been tested on 2.7.
+\item PyQt 5.
+\item PyOpenGL. (\texttt{python-opengl 3.0.1})
+\item NumPy. (\texttt{python-numpy 1:1.6.1-6})
+\item PyCairo (\texttt{libcairo2-dev} and \texttt{python-cairo 1.8.8} amongst other components). I believe that Ubuntu 12.04
+      and later (presumably) ship with the required Cairo components installed by default (it seemed so anyway).
+\item PyAudio. (\texttt{python-pyaudio} for PortAudio V19). This is used for the terminal bell! The sound can be any WAV file.
+\item Python Imaging Library (PIL) (\texttt{python-imaging 1.1.7-4}). This is needed to design new fonts.
+\item Inkscape Vector Graphics Editor (to design new fonts).
+\end{itemize}
+There may be others, but these are the major ones, I think.
+
+\section{Source Components}
+The following files (all in the directory \texttt{gterm}) make up \textbf{GTerm}:
+\begin{itemize}
+\item \texttt{gterm.py}: This is the terminal emulator. It can be run using \texttt{./gterm.py} or \texttt{python gterm.py} 
+      or via the Ubuntu Unity desktop (see below).
+\item \texttt{gtermhostinfo.txt}: This is a list of `known hosts' which can be selected from a list in \textbf{GTerm}. The file
+      specifies a name to be shown for the host in the list, the host name or IP address, the port number to use on the
+      host and the host type (\texttt{nos, nosapl, vms, unix} or \texttt{windows}). 
+\item \texttt{mainfont.svg}: This is the template SVG file containing a grid of character positions with fiduciary marks in
+      red and green, together with the default font glyphs in blue. By editing the font glyphs in this file in
+      Inkscape, any character can be drawn for any character code.
+\item \texttt{mainfont.png}: An image file version of \texttt{mainfont.svg} exported from Inkscape.
+\item \texttt{getmetrics.py}: This processes the image file \texttt{mainfont.png} (by default) and outputs two files:
+      \texttt{mainfonttexture.png}
+      (default name) which contains the monochrome texture map for the character glyphs which \textbf{GTerm} loads and 
+      \texttt{mainfonttexture.jsn} (default) which specifies the texture coordinates of the bottom left of each character glyph
+      in \texttt{mainfonttexture.png}, as well as the character width and height in both pixels and normalized texture
+      coordinate units. By default, it also dumps out each character of the font in an image file called
+      \texttt{celltest\_nnn.png}. These image files can by used by \texttt{makevkb.py}
+      to assemble a virtual keyboard image and the metrics
+      needed to locate the selected character on that keyboard.
+\item \texttt{makevkb.py}: This reads a definition file (default: \texttt{definitions.jsn})
+      specifying the characters wanted on a virtual
+      keyboard and creates an image file containing those character glyphs for use as a texture mapped image in \textbf{GTerm}.
+\item \texttt{aplvkb.jsn}: The virtual keyboard definitions file for an APL keyboard using the default character set in
+      \texttt{mainfont.svg/.png}. Feeding this through \texttt{makevkb.py} generates \texttt{aplvkb.png}.
+\item \texttt{mainfontunicode.py}: This generates a file that maps internal character codes to Unicode code points so that
+      the log file will contain the right Unicode code point for printing. It may be that not all characters have 
+      a Unicode equivalent -- although the default font does (more or less). Edit this program to set the mapping,
+      which is written to \texttt{mainfontunicode.jsn} (default).
+\item \texttt{kling.wav}: The sound used for the terminal bell. I took this file from Libre Office.
+\item \texttt{build.sh}: A Bash script that can be used to create \texttt{mainfontexture.png}
+      from \texttt{mainfont.png}, assemble the APL virtual
+      keyboard image, \texttt{aplvkb.png} from \texttt{aplvkb.jsn} and to create a new internal 
+      character code to Unicode code point map,
+      \texttt{mainfontunicode.jsn}, from \texttt{mainfontunicode.py}.
+\item \texttt{gterm.desktop}: The Ubuntu Unity desktop icon definition file to allow \textbf{GTerm} to be launched from Unity. This may
+      need to be edited to reflect where \textbf{GTerm} is `installed'.
+\item \texttt{gtermicon.png}: The icon image used in Unity.
+\item \texttt{trygraf.py}: An example class and test program for the graphics commands understood by \textbf{GTerm}.
+      Other Python programs could use this to create graphical output to be displayed by \textbf{GTerm}.
+\item \texttt{Documents}: A directory containing the documentation for \textbf{GTerm} (this document!).
+\end{itemize}
+
+\section{Installing \textbf{GTerm} on Linux}
+Given the pre-requisites are in place on your system, simply copy the \texttt{gterm} directory to a convenient location.
+Then:
+\begin{itemize}
+\item Edit \texttt{gterm.desktop} to reflect the location of the \textbf{GTerm} directory on your system.
+\item \texttt{sudo cp gterm.desktop /usr/share/applications}
+\item Ensure that \texttt{gtermicon.png} is executable (I don't know why this is needed, but it seems it is).
+\end{itemize}
+That is it. After this, \textbf{GTerm} should be available in the Unity launcher as shown in Figure \ref{fig:gtermunity}.
+\begin{figure}
+	\centering
+		\includegraphics[width=0.4\maxwidth]{gterm-unity.eps}
+	\caption{\textbf{GTerm} in the Unity launcher}
+	\label{fig:gtermunity}
+\end{figure}
+
+\section{\textbf{GTerm} Controls}\label{useit}
+\textbf{GTerm} is shown in Figure \ref{fig:gtermss}. This shows the text display with the APL virtual keyboard being
+shown. 
+\begin{figure}
+	\centering
+		\includegraphics[width=\maxwidth]{gterm-ss.eps}
+	\caption{\textbf{GTerm} Screenshot}
+	\label{fig:gtermss}
+\end{figure}
+The controls are as follows:
+\begin{itemize}
+\item \texttt{To:} This list shows the `known hosts' defined in the \texttt{gtermhostinfo.txt} file. Selecting
+      from this list sets the \texttt{host name}, \texttt{port number} and \texttt{host type} controls.
+\item \texttt{Host name} and \texttt{Port number} text fields. The user can type the desired host name or IP address and
+      port number of the service to connect to in these controls. Selecting a `known host' in the \texttt{To:} list
+      fills in these values.
+\item \texttt{Host type}. This list lets the user select the type of host service being connected to. This sets the
+      appropriate `erase' character, option negotiations on connect, escape sequence handlers and possibly
+      key definitions for that type of host. The choices available are:
+      \begin{itemize}
+      \item \texttt{Cyber/APL}: Settings for a CDC NOS system with APL 2 batch character sequence and \textbf{GTerm}
+            graphics escape handlers. Erase is backspace. Interrupt is \texttt{Control-T}. Type \texttt{nosapl} in
+            a \texttt{gtermhostinfo.txt} host entry selects this host type. Key \texttt{F1} is set to output the
+            string: \texttt{APL,TT=713.} which will start the APL interpreter in the correct terminal mode.
+      \item \texttt{Cyber}: Settings for a CDC NOS system with \textbf{GTerm}
+            graphics escape handlers only.
+            Erase is backspace. Interrupt is \texttt{Control-T}. Type \texttt{nos} in
+            a \texttt{gtermhostinfo.txt} host entry selects this host type.
+            Key \texttt{F2} is set to the string: \\
+            \texttt{ABGPLOT,OBEY=APLOT,GET=Y.} \\
+            which will run the GPLOT plotting
+            program reading commands from \texttt{APLOT}. 
+      \item \texttt{VMS}: Settings for a DEC VMS system with \textbf{GTerm} graphics escape handlers. Erase is delete.
+            Interrupt is \texttt{Control-Y}. Arrow keys send VT-100 sequences.
+            Type \texttt{vms} in a \texttt{gtermhostinfo.txt} host entry selects 
+            this host type.
+      \item \texttt{Unix}: Settings for Unix (including Linux) with \textbf{GTerm} graphics escape handlers. Erase is
+            delete. Interrupt is \texttt{Control-C}. Arrow keys send VT-100 sequences. Type \texttt{unix}
+            in a \texttt{gtermhostinfo.txt} host entry selects this host type.
+      \item \texttt{Windows}: Settings for a Windows host with \textbf{GTerm} graphics escape handlers. Erase is backspace.
+            Interrupt is \texttt{Control-C}. Arrow keys send VT-100 sequences.
+            Type \texttt{windows} in a \texttt{gtermhostinfo.txt} host entry selects this host type.
+      \end{itemize}
+      Selecting a `known host' sets this host type control.
+\item \texttt{Clear} button. Erases the current display (text or graphics).
+\item \texttt{Save Log} button. This pops up a file browser to let you save the session log accumulated so far
+      to a name of your choice. When \textbf{GTerm} starts it always opens a Unicode text log file called:\\
+      \texttt{/tmp/gterm\_log\_yyyy\_mm\_dd\_hh\_mm\_ss.utxt}\\
+      where \texttt{yyyy} etc. is the date and time when the log was opened. If a log file is renamed with \texttt{SaveLog}
+      a new log file will be re-opened with the current date and time in the name. Note that there are several tools
+      that work well with Unicode text files. The standard Ubuntu text editor (\texttt{gedit}) is perhaps the simplest tool to use
+      to view these files `nicely' and to print them. Two tools exist to convert Unicode text files to PostScript:
+      \texttt{u2ps} and \texttt{paps}. These programs can be used as follows:\\
+      \texttt{u2ps gterm.utxt -o mylog.ps}\\
+      \texttt{paps --cpi 20 gterm.utxt > mylog.ps}\\
+      Following which, PDF files can be generated using:\\
+      \texttt{ps2pdf mylog.ps mylog.pdf}\\
+      \texttt{Emacs} and even \texttt{more} in the standard terminal window also work. This degree of support for Unicode
+      text in Ubuntu was a pleasant surprise.
+\item \texttt{Save Graphics} button. This pops up a browser to let you save the contents of the graphics display as an SVG
+      format file. This can be edited in Inkscape and processed by many other Ubuntu programs.
+\item \texttt{Guide list} button. This can be used to add column guides to the screen background. Currently,
+	only a Fortran guide is defined.
+\item \texttt{Status} button. This pops up a dialog in which information on the state of \textbf{GTerm} is shown.
+\item \texttt{Show keyboard} checkbox. This shows or hides the virtual keyboard (the default being an APL keyboard).
+\item \texttt{Show non-print} checkbox. This turns on the display of non-printing character codes. They are shown on screen
+      as small glyphs containing the hexadecimal value or the standard character name. Note that control characters that
+      are interpreted by \textbf{GTerm} (such as LF) will not be displayed.
+\item \texttt{Local echo} checkbox. Echo characters locally. This will rarely be useful except when experimenting with a new
+      type of host, as the host dependent Telnet option negotiation would normally set this automatically if needed.
+\item \texttt{Debug} checkbox. Turns on very extensive debug output to the terminal from which \textbf{GTerm} is being run. This usually
+      includes hex dumps of all Telnet traffic. This option is not useful if \textbf{GTerm} is started from the Unity launcher, of course.
+\item \texttt{FF clears} checkbox. If set, a form-feed will clear the screen. If not, a line clearly delineating the end of a
+      page will be shown (lots of dashes).
+\item \texttt{On paper} checkbox. Instead of a plain blue background, a simulated green-bar paper background is drawn. This may
+      help with seeing what characters lie on which lines, but is mainly for cosmetic effect.
+\item \texttt{No escape} checkbox. This prevents escape sequences being recognized. This can be useful when trying to
+	write functions that generate such sequences. The characters comprising the sequence will be visible in the editor rather than
+	causing graphics to be drawn.
+\item \texttt{Text/Graphics} selector. Choose to display the text buffer or the graphics buffer. The Clear button applies to the
+      currently displayed buffer.
+\end{itemize} 
+
+\section{Using \textbf{GTerm}}
+On Mac OS X, \textbf{GTerm} will normally be started from the Applications folder or Launchpad in the usual way.
+\newpara
+On Ubuntu Linux,
+\textbf{GTerm} will usually be started from the Unity launcher as described above. If debug output is needed, it must be
+run from the command line. Either:\\
+\texttt{\$ ./gterm.py}\\
+or\\
+\texttt{\$python gterm.py}\\
+will suffice for this.
+\newpara
+\textbf{GTerm} may be in one of four states which are shown by the colour of the background of the text window:
+\begin{itemize}
+\item Not connected. Not selected. Background: dark red.\\
+      To connect, select a known host from the \texttt{To:} list \textbf{or} enter the \textit{host name or IP address}
+      and \textit{port number} to connect to in the appropriate
+      text fields and select the \textit{host type} from the types list. Then press the \texttt{Connect} button.
+\item Connected. Not selected. Background: dark blue.\\
+      Output from the host will be displayed but keyboard input will not be sent to the host.
+      To select, click in the main terminal text display.
+\item Connected. Selected. Background: bright blue.\\
+      Keyboard input will be sent to the host when selected.
+\item Not connected. Selected. Background: bright red.\\
+      This will be the state immediately after logging out of a host.
+\end{itemize}
+The colours apply to the paper `greenbars' in paper mode.
+\newpara
+If a command is run on the host that generates graphics output, a count of graphics commands
+stored so far will be shown in the top right of the text display. E.g. \texttt{GC:127} in Figure \ref{fig:gtermss}.
+Switching to the graphics display will show what has been drawn (so far). If no graphics commands have been
+received, the graphics display will show: \texttt{No graphics data}.
+\newpara
+There are no facilities for selecting text with a mouse, etc. However, the session log (which is always
+automatically created when a connection to a host is made) contains all output from the host and all input
+typed by the user.
+\newpara
+If a virtual keyboard is displayed, left clicking on a `key' will enter the associated character.
+Right clicking on a `key' will display the `tool tip' help for that `key'. This might explain what
+some peculiar looking characters actually mean!
+\newpara
+If the \texttt{Ctrl+Alt+ArrowKey} sequence is used on Ubuntu Linux to switch between workspaces, press 
+the \texttt{Home} key when focus is regained by \textbf{GTerm}. This will reset all internal modifier key states
+to the default off state, avoiding possibly insane behaviour if a modifier has been turned on by
+the workspace switching sequence.
+Unfortunately, I have not found a way to reliably
+track the \texttt{Ctrl} and \texttt{Alt} keys when switching workspaces with \texttt{Ctrl+Alt+ArrowKey}.
+\newpara
+Unfortunately, there is no reasonable way to determine the \texttt{CapsLock} key \textit{state}
+in Qt. There are some awful hacks which try to find the X server LED states (which is possible) to
+get the \texttt{CapsLock} key state, but that is both horrible and messy. 
+\texttt{CapsLock} \textit{events} are handled correctly,
+but the initial \texttt{CapsLock} \textit{state} is basically unknown (and the
+best we can do is assume it to be off). This may cause capitalization to be reversed from
+that expected when switching between applications.
+
+\section{Hot Keys}
+A few hot keys are defined which are very useful to avoid losing focus in the main text window when
+wanting to use some of the more commonly needed controls. The ones currently defined are listed in
+Table \ref{tab:hotkeys}. All hot keys use: \texttt{ALT+<key>} to activate them (except \texttt{PgUp},
+\texttt{PgDn} and \texttt{Home} which work with or without \texttt{Alt}).
+
+\begin{table}
+\centering
+\begin{tabular}{|| l | l ||}
+\hline
+Key & Purpose\\
+\hline
+T  & Switch to text view.\\
+G  & Switch to graphics view.\\
+K  & Toggle virtual keyboard on and off.\\
+U  & Scroll text up by 20 lines.\\
+PgUp  & Same as U.\\
+D  & Scroll text down by 20 lines.\\
+PgDn  & Same as D.\\
+H  & Turn off any scrolling.\\
+Home & As H, and reset modifiers (see above). \\
+A  & Toggle graphics anti-aliasing on and off.\\
+\hline
+\end{tabular}
+\caption{Hot Keys}
+\label{tab:hotkeys}
+\end{table}
+
+\newpara
+As of V0.4, scrolling in the text plane is controlled with the mouse wheel (or equivalent). 
+
+\subsection{Command line editing}
+The arrow keys (as of V0.4) are used to perform local command line editing. A buffer of lines input by the user
+and terminated by \texttt{(return)} is maintained inside \textbf{GTerm}. These may or may not be `commands', but they will be
+a superset of them (there is, of course, no way \textbf{GTerm} can tell the difference between commands to the operating system,
+commands (etc.) to applications and data entry). The actual implementation of line editing is pretty tortuous, but it 
+seems to work correctly (finally!).
+
+\newpara
+The \texttt{up-arrow} key moves up the command list (further into the past) and the \texttt{down-arrow} moves down
+the history list towards the present. When the present is reached, a blank line is shown indicating a new command can be
+entered.
+
+\newpara
+When a history line is selected the \texttt{forward-arrow} key moves though the line to the right and the
+\texttt{back-arrow} key moves to right. The current position is shown by a red line cursor positioned between
+(or before the first and after the last) character on the line. Typing printing characters will insert them at the
+cursor position. The \texttt{backspace} key will delete the character immediately before the cursor (if any).
+
+\newpara
+The \texttt{control-A} key combination moves the cursor to the start of the line and \texttt{control-E} to the end.
+The \texttt{control-D} key combination deletes the character immediately after the cursor (if any).
+
+\newpara
+The \texttt{(return)} key sends the edited (or simply recalled) line to the host.
+
+\newpara
+Note that command line editing works with APL characters as well as `normal' characters.
+
+\section{Modifying \textbf{GTerm}}
+The source code version of \textbf{GTerm} must be installed to make any changes, obviously!
+\newpara
+It is possible to change the glyphs shown for any 7-bit character code by modifying the contents of
+\texttt{mainfont.svg}. The locations for each character code are clearly marked with red lines and 
+anything you can draw (in blue) with an SVG editor can be shown for that code. \texttt{getmetrics.py} will generate
+a texture map for use by \textbf{GTerm} from this SVG file.
+\newpara
+Editing \texttt{definitions.jsn} (default name) and running \texttt{makevkb.py} will assemble a new virtual keyboard image for
+use in \textbf{GTerm}. An example of a definitions file is \texttt{aplvkb.jsn} which shows clearly how this works (including the
+`tool tips' for each key on the virtual keyboard).
+\newpara
+Editing \texttt{makefontunicode.py} lets you change the association between internal character codes and the Unicode
+code point that should be printed for them.
+\newpara
+The shell script \texttt{build.sh} performs the steps needed to make the files used by \textbf{GTerm} from these various primary
+definition files. The usage text for \texttt{getmetrics.py} and \texttt{makevkb.py} will show you the available options
+for these programs.
+\newpara
+Since all of \textbf{GTerm} is in source code form, almost any modification is possible. The main classes and functions in
+\textbf{GTerm} (in \texttt{gterm.py}) are:
+\begin{itemize}
+\item \texttt{class XTelnet(Telnet,object)}: This extends the standard Python \texttt{Telnet} class in various ways.
+\item \texttt{function main\_terminal\_telnet()}: This uses \texttt{XTelnet}
+      to implement a complete command line Telnet application
+      which can be run from a Terminal window.
+\item \texttt{function negot()}: Performs minimal but essential option negotiation on connecting to a host.
+      This aspect of Python's \texttt{Telnet} class is not really documented well anywhere -- but this code works
+      with the hosts tested so far.
+\item \texttt{class GTermWidget(QGLWidget)}: A PyQt widget that implements all the connection type independent
+      terminal functionality (more or less). Classes derived from this can implement a connection type specific
+      terminal -- e.g. Telnet. A serial line connection could be another future application.
+\item \texttt{class GTermTelnetWidget(GTermWidget)}: A PyQt widget that adds Telnet connectivity to \texttt{GTermWidget}.
+\item \texttt{class AudioFile}: Minimal facility to replay \texttt{WAV} audio files. Used for the bell!
+\item \texttt{functions cyber\_apl\_escape()} and \texttt{ansi\_escape()} process APL batch character sequences and ANSI escape
+      sequences respectively.
+\item \texttt{class TerminalDialog(QDialog)}: This is \textbf{GTerm}'s PyQt GUI class which implements pretty much the whole
+      \textbf{GTerm} application using \texttt{GTermTelnetWidget} and the usual PyQt widgets. Layout is built in to the
+      program -- there are no external `resource' files.
+\end{itemize}
+There are fairly extensive comments in the code which might help with modifications.
+
+\section{Graphics Commands}
+These are implemented using a new set of ANSI-like escape sequences. Since these sorts 
+of sequences were being minimally processed
+to throw them away, it seemed like a convenient place to add graphics commands. The format is not very efficient.
+It is much more verbose than Tektronix graphics format. On the other hand, it is all readable characters apart from
+the ANSI Escape character, and it is vastly more concise than SVG seems to be. The \emph{original} (pre-V0.4)
+commands are shown in Table \ref{tab:graphicscmds}. These are all defined using integers.
+
+\begin{table}
+\centering
+\begin{tabular}{|| l | l | l ||}
+\hline
+Command & Sequence & Explanation\\
+\hline
+Clear  & \texttt{<Esc> [ 0 z}             & Empty the graphics command list.\\
+Colour & \texttt{<Esc> [ 1 rrr ggg bbb z} & Set the current colour to (r,g,b). Range: 0:999\\
+Fill   & \texttt{<Esc> [ 2 z}             & Fill the graphics window with colour.\\
+Move   & \texttt{<Esc> [ 3 xxxx yyyy z}   & Move to (x,y) with the `pen' up. Coordinates: 0:9999\\
+Draw   & \texttt{<Esc> [ 4 xxxx yyyy z}   & Draw to (x,y) with the `pen' down.\\
+Flush  & \texttt{<Esc> [ 5 z}             & Force the graphics command list to be drawn now.\\
+Width  & \texttt{<Esc> [ 6 www z}         & Set the line width. Range: 1:999\\
+\hline
+\end{tabular}
+\caption{Graphics Commands}
+\label{tab:graphicscmds}
+\end{table}
+
+\noindent
+Note that there are no spaces in the commands -- the spacing between components is just for clarity
+in this description.
+\newpara
+The graphics model is that (2D) graphics commands are sent to \textbf{GTerm} and added to a graphics
+command list. This is drawn when the user switches to the graphics display in \textbf{GTerm} and is
+guaranteed to be fully drawn after a Flush command. The list is emptied by a Clear command.
+\newpara
+All commands begin with the usual ANSI escape sequence introducer of \texttt{<Escape> [} and 
+end in \texttt{z}. Performance is actually quite reasonable.
+
+\begin{table}
+\centering
+\begin{tabular}{|| l | l | l ||}
+\hline
+Command & Sequence & Explanation\\
+\hline
+Clear  & \texttt{@[0 @}             & \footnotesize{Empty the graphics command list.}\\
+Colour & \texttt{@[1 r g b @} & \footnotesize{Set the current colour to \texttt{(r,g,b)}. Range: 0:1}\\
+Fill   & \texttt{@[2 @}             & \footnotesize{Fill the graphics window with colour.}\\
+Move   & \texttt{@[3 x y @}   & \footnotesize{Move to \texttt{(x,y)} with the `pen' up. Coordinates: any float.}\\
+Draw   & \texttt{@[4 x y @}   & \footnotesize{Draw to \texttt{(x,y)} with the `pen' down.}\\
+Flush  & \texttt{@[5 @}             & \footnotesize{Force the graphics command list to be drawn now.}\\
+Width  & \texttt{@[6 w @}         & \footnotesize{Set the line width to \texttt{w}. Range: 0.0 to 9.0}\\
+\hline
+Bounds   & \texttt{@[7 xlo ylo xhi yhi @}   & \footnotesize{Set the bounds to user coordinates \texttt{(xlo,ylo)} to \texttt{(xhi,yhi)}.}\\
+G-Bounds   & \texttt{@[8 xlo ylo xhi yhi @}   & \footnotesize{Set the graph bounds to user coordinates \texttt{(xlo,ylo)} to \texttt{(xhi,yhi)}.}\\
+Square & \texttt{@[G p @}         & \footnotesize{Set `square bounds mode' (or not). \texttt{p} is 0 or 1.}\\
+Text & \texttt{@[9 s @}         & \footnotesize{Draw text \texttt{s} in the current size and alignment.}\\
+TextSize & \texttt{@[A sz @}         & \footnotesize{Set the text size to \texttt{sz}. 14 is a typical normal size.}\\
+TextAlign & \texttt{@[B al @}         & \footnotesize{Set the text align to \texttt{al}. \texttt{0:left, 1:center, 2:right, 3:title}.}\\
+TextFont & \texttt{@[C ft @}         & \footnotesize{Set the text font to \texttt{ft}. \texttt{0:serif, 1:sans, 2:fixed}.}\\
+Title & \texttt{@[E s @}         & \footnotesize{Draw text \texttt{s} as a title for a graph.}\\
+Point & \texttt{@[D x y @}         & \footnotesize{Draw a point at \texttt{(x,y)}.}\\
+Circle & \texttt{@[F x y r @}         & \footnotesize{Draw a circle at \texttt{(x,y), x radius \texttt{r}}.}\\
+\hline
+\end{tabular}
+\caption{New Graphics Commands}
+\label{tab:graphicscmds2}
+\end{table}
+
+\newpara
+As of V0.4, these original graphics commands have been augmented with a `higher level' set of
+commands. These use floating point numbers in the data stream with the idea of moving almost all
+of the graphics from the host to \textbf{GTerm}.  They also replace the non-printing escape
+character with the \texttt{@} character. These commands are shown in Table~\ref{tab:graphicscmds2}.
+In this table, the spaces characters are literal: they need to be there as shown. The original graphics 
+commands are still available and are used by DIMFILM (and hence \textbf{GPLOT}).
+
+\newpara
+The difference between Bounds and G-Bounds  is that internally the latter will adjust the specified bounds
+to get  a `nice' range of values with `nice' `tick' values for graph plotting.
+
+\newpara
+If Square (with \texttt{p=1}) has been sent \emph{before} Bounds or G-Bounds, the behaviour of those
+will be changed so that a square in user coordinates will appear as a square when drawn. For G-Bounds, 
+the X range is adjusted so that the tick intervals are the same on both
+axes and the X range is \emph{centred on} the supplied X range.
+
+\newpara
+The \texttt{title} text alignment centers the text in the display, as opposed to \texttt{center}, which centres
+the text on the current graphics position. Note that text to be drawn cannot contain the \texttt{@} character!
+
+\section{Example Host Code for Graphics Output}
+Python code to output \textbf{GTerm} graphics commands is shown below.
+
+\begin{lstlisting}
+class GtermGraphics(object):
+    """
+    Output GTerm compatible graphics commands.
+    Fixed mode is for DIMFILM, basically. The default mode implements something like
+    a very simple standalone graphics library rather than a totally dumb device.
+    """
+
+    def __init__(self,lun,fixedmode=False):
+        self.lun = lun
+        self.fixedmode = fixedmode
+
+    def unavailable(self, msg):
+        print 'Function: {0}() is unavailable in fixed mode.'.format(msg)
+
+    def clamp(self,v,lo,hi):
+        return max(lo,min(v,hi))
+
+    def clear(self):
+        """
+        Empty the graphics display list. Clear the screen, in effect.
+        """
+        if self.fixedmode:
+            self.lun.write('\033[0z')
+        else:
+            self.lun.write('@[0@')
+
+    def colour(self,r,g,b):
+        """
+        Set the drawing colour.
+        """
+        if self.fixedmode:
+            ir = self.clamp(int(999.9*r),0,999)
+            ig = self.clamp(int(999.9*g),0,999)
+            ib = self.clamp(int(999.9*b),0,999)
+            s = '\033[1{0:03d}{1:03d}{2:03d}z'.format(ir,ig,ib)
+        else:
+            ir = self.clamp(r,0.0,1.0)
+            ig = self.clamp(g,0.0,1.0)
+            ib = self.clamp(b,0.0,1.0)
+            s = '@[1 {0:.3f} {1:.3f} {2:.3f} @'.format(ir,ig,ib)
+        self.lun.write(s)
+
+    def erase(self):
+        """
+        Fill the display with the drawing colour.
+        """
+        if self.fixedmode:
+            self.lun.write('\033[2z')
+        else:
+            self.lun.write('@[2@')
+
+    def pen(self,x,y,z):
+        if z > 0:
+            c = 4
+        else:
+            c = 3
+        if self.fixedmode:
+            ix = self.clamp(int(9999.9*x),0,9999)
+            iy = self.clamp(int(9999.9*y),0,9999)
+            s = '\033[{0:1d}{1:04d}{2:04d}z'.format(c,ix,iy)
+        else:
+            s = '@[{0} {1} {2} @'.format(c,x,y)
+        self.lun.write(s)
+
+    def move(self,x,y):
+        """
+        Move to user coordinates (x,y). In fixed mode, the user coordinates
+        are fixed at (0,0) to (1,1) corresponsding to the bootom laft and top right.
+        In "altmode", these are set by bounds() or gbounds().
+        """
+        self.pen(x,y,0)
+
+    def draw(self,x,y):
+        """
+        Draw to user coordinates (x,y).
+        """
+        self.pen(x,y,1)
+
+    def flush(self):
+        """
+        Ensure the contents of the display list are drawn.
+        """
+        if self.fixedmode:
+            self.lun.write('\033[5z')
+        else:
+            self.lun.write('@[5@')        
+
+    def width(self,w):
+        """
+        Set the line drawing width in pixels (as far as possible).
+        """
+        if self.fixedmode:
+            iw = self.clamp(int(99.9*w),0,999)
+            s = '\033[6{0:03d}z'.format(iw)
+        else:
+            iw = self.clamp(w,0.0,9.0)
+            s = '@[6 {0} @'.format(iw)
+        self.lun.write(s)
+
+    def bounds(self,xlo,ylo,xhi,yhi):
+        """
+        Set up the user coordinate system. Bottom left of the display is at (xlo,ylo)
+        and top right is at (xhi,yhi). If square_mode() has been previously issued, the
+        *X* bounds will be adjusted so that something that is sqaure in user coords appears
+        square in the display.
+        """
+        if self.fixedmode:
+            self.unavailable('bounds')
+        else:
+            s = '@[7 {0} {1} {2} {3} @'.format(xlo,ylo,xhi,yhi)
+            self.lun.write(s)
+
+    def gbounds(self,xlo,ylo,xhi,yhi):
+        """
+        Set the data range for simple graph drawing. The values specified are internally modified
+        based on "tick values" to get a generally pleasing range and starting value. If square_mode()
+        has previously been used, the *X* range is adjusted so that the tick intervals are the same on both
+        axes and the X range is *centered on* the supplied X range.
+        """
+        if self.fixedmode:
+            self.unavailable('gbounds')
+        else:
+            s = '@[8 {0} {1} {2} {3} @'.format(xlo,ylo,xhi,yhi)
+            self.lun.write(s)
+
+    def text(self,string):
+        """
+        Output text at the last move() location.
+        """
+        if self.fixedmode:
+            self.unavailable('text')
+        else:
+            s = '@[9 {0} @'.format(string)
+            self.lun.write(s)
+
+    def textsize(self,size):
+        """
+        Set the size of the text in somewhat arbitrary units. 14 is arguably normal size text.
+        """
+        if self.fixedmode:
+            self.unavailable('textsize')
+        else:
+            size = max(3,size)
+            s = '@[A {0} @'.format(size)
+            self.lun.write(s)
+        
+    def textalign(self,alignment):
+        """
+        Set how subsequent text() is aligned with the move() immediately preceding it.
+        alignment 'left' has the text() start there, 'right' has it end there and
+        center has it be centered there. 'dispcenter' has it centered in X on the display.
+        """
+        if self.fixedmode:
+            self.unavailable('textalign')
+        else:
+            aldict = {'left':0,'center':1,'right':2,'dispcenter':3}
+            try:
+                alcode = aldict[alignment]
+            except:
+                print 'Unknown alignment name:',alignment
+                return
+            s = '@[B {0} @'.format(alcode)
+            self.lun.write(s)
+
+    def textfont(self,fontname):
+        """
+        Choose a font type (very roughly). Only three choices, as this is not intended
+        to be a typesetting solution! 'serif', 'sans' and 'fixed'.
+        """
+        if self.fixedmode:
+            self.unavailable('textfont')
+        else:        
+            fndict = {'serif':0,'sans':1,'fixed':2}
+            try:
+                fncode = fndict[fontname]
+            except:
+                print 'Unknown font name:',fontname
+                return
+            s = '@[C {0} @'.format(fncode)
+            self.lun.write(s)
+
+    def point(self,x,y):
+        """
+        Draw a point at user coordinates (x,y).
+        """
+        if self.fixedmode:
+            self.unavailable('point')
+        else:         
+            s = '@[D {0} {1} @'.format(x,y)
+            self.lun.write(s)       
+
+    def title(self,string):
+        """
+        Draw a graph title in a fixed size and font centered on the display.
+        """
+        if self.fixedmode:
+            self.unavailable('title')
+        else:     
+            s = '@[E {0} @'.format(string)
+            self.lun.write(s)
+
+    def circle(self,x,y,r):
+        """
+        Draw a circle, center user coords (x,y), radius user X units r. This is always a circle, regardless of
+        the bounds set.
+        """
+        if self.fixedmode:
+            self.unavailable('circle')
+        else:         
+            s = '@[F {0} {1} {2}  @'.format(x,y,r)
+            self.lun.write(s)
+
+    def square_bounds(self,yes):
+        """
+        Modify subsequent bounds() and gbounds() calls so that if a square is drawn in user coordinates
+        it appears square on the display.
+        """
+        if self.fixedmode:
+            self.unavailable('square_bounds')
+        else:        
+            iyes = 1 if yes else 0
+            s = '@[G {0} @'.format(iyes)
+            self.lun.write(s)
+\end{lstlisting}
+
+\noindent A screen shot of the \textbf{GTerm} graphics display drawn using this library is shown in Figure \ref{fig:graf1}.
+\begin{figure}
+	\centering
+		\includegraphics[width=0.8\maxwidth]{gtermtestgraf.eps}
+	\caption{\textbf{GTerm} Graphics from Simple Test Program}
+	\label{fig:graf1}
+\end{figure}
+
+
+\section{APL and \textbf{GTerm}}\label{aplinfo}
+In Cyber/APL mode, \textbf{GTerm} supports the use of the APL character set with NOS APL 2. The special
+APL characters are input using the virtual keyboard facility and shown in the display. Log files
+use Unicode representations of these characters, using the Unicode code points defined in the
+ISO-IEC/JTC1/SC22 N 3067 "APL Character Repertoire" standard.
+\newpara
+Many (most?) tools for text editing and display on Ubuntu just work with these Unicode log
+files without any special action being required. Unfortunately, this is \textit{not} true of \LaTeX\ .
+In order to correctly typeset APL source code cut out of log files, the following is needed:
+\begin{itemize}
+\item \XeTeX\ or, probably, Lua\TeX\ , must be used. These support Unicode input. 
+\item The font \texttt{APL385.ttf} must be installed on the system. This is freely
+      available for download on the Internet.
+\item Code can then be included in \texttt{\textbackslash{}verbatim} 
+      environments by preceding such sections with
+      \texttt{\textbackslash{}setmonofont\{APL385\}}. 
+      To switch back to the default `typewriter' font, use
+      \texttt{\textbackslash{}setmonofont\{AndaleMono\}}. 
+\end{itemize}
+An example of APL source code cut out of a log file and typeset is:
+\newpara
+\hrule
+\setmonofont{APL385}
+\begin{verbatim}
+      ∇Z←A CROSS B
+[1]    Z←1⌽((A×(1⌽B))-(B×(1⌽A)))
+      ∇
+[2]   ∇
+      1 2 3 cross 4 5 6
+¯3 6 ¯3
+      ⎕SAVE 'APVECT'
+APVECT 4/01/04 16:25:50
+
+      A←1 0 0
+      B←0 0 1
+      A CROSS B
+0 ⁻1 0
+\end{verbatim}
+%%\setmonofont{AndaleMono}
+\hrule
+\newpara
+The full set of APL characters supported by default with \textbf{GTerm} is shown in 
+Tables \ref{tab:aplcs1} and \ref{tab:aplcs2}.
+These are all the special characters required by NOS APL2 (I believe) along with some `normal' characters which seemed
+handy to have on the APL virtual keyboard.
+
+\begin{table}
+\centering
+\begin{tabular}{||l|l|l|l|l||}
+\hline\hline
+Symbol&I-Code&Meaning&U-Code&B-Code\\
+\hline
+\texttt{.} & 46 & Group/Decimal & 002e & ---\\\hline
+\texttt{⌹} & 184 & Matrix Inverse/Divide & 2339 & \$XD\\\hline
+\texttt{⍉} & 154 & Transpose & 2349 & \$TP\\\hline
+\texttt{⊥} & 150 & Base Value & 22a5 & \$BV\\\hline
+\texttt{⊤} & 151 & Represent & 22a4 & \$RP\\\hline
+\texttt{⌽} & 149 & Rotate/Reverse & 233d & \$RT\\\hline
+\texttt{⊖} & 158 & 1st Coord Rotate/Reverse & 2296 & \$RU\\\hline
+\texttt{⍎} & 152 & Execute & 234e & \$EV\\\hline
+\texttt{⍕} & 153 & Format & 2355 & \$FM\\\hline
+\texttt{▮} & 162 & Bad Char & 25ae & \$BC\\\hline
+\texttt{⍡} & 164 & Escape from Quote-Quad Input & 2361 & ---\\\hline
+\texttt{¨} & 166 & Break/Dieresis & 00a8 & \$DI\\\hline
+\texttt{\$} & 36 & Dollar & 0024 & ---\\\hline
+\texttt{×} & 200 & Multiply & 00d7 & \$ML\\\hline
+\texttt{÷} & 146 & Divide & 00f7 & \$DV\\\hline
+\texttt{⌈} & 198 & Maximum/Ceiling & 2308 & \$MX\\\hline
+\texttt{*} & 42 & Power/Exponential & 002a & ---\\\hline
+\texttt{|} & 124 & Residue/Magnitude & 007c & \$MD\\\hline
+\texttt{○} & 195 & Circular Function & 25cb & \$CI\\\hline
+\texttt{∧} & 191 & And & 2228 & \$AN\\\hline
+\texttt{⍲} & 189 & Nand & 2372 & \$ND\\\hline
+\texttt{∊} & 183 & Membership & 220a & \$EP\\\hline
+\texttt{?} & 63 & Deal/Roll & 003f & ---\\\hline
+\texttt{/} & 47 & Compress/Reduce & 002f & ---\\\hline
+\texttt{⌿} & 178 & 1st Coord Compress/Reduce & 233f & \$SM\\\hline
+\texttt{¯} & 174 & Negative Value & 00af & \$NG\\\hline
+\texttt{+} & 43 & Add & 002b & ---\\\hline
+\texttt{-} & 45 & Subtract & 002d & ---\\\hline
+\texttt{⌋} & 197 & Minimum/Floor & 230b & \$MN\\\hline
+\texttt{⍟} & 254 & Logarithm & 235f & \$LG\\\hline
+\texttt{!} & 33 & Combinations/Factorial & 0021 & ---\\\hline
+\texttt{∼} & 126 & Not & 223c & \$TL\\\hline
+\texttt{∨} & 190 & Or & 2227 & \$OR\\\hline
+\hline\hline
+\end{tabular}
+\caption{APL Character Set (Part 1)}
+\label{tab:aplcs1}
+\end{table}
+\begin{table}
+\centering
+\begin{tabular}{||l|l|l|l|l||}
+\hline\hline
+Symbol&I-Code&Meaning&U-Code&B-Code\\
+\hline
+\texttt{⍱} & 188 & Nor & 2371 & \$NR\\\hline
+\texttt{⍪} & 186 & 1st Coord Join & 236a & \$CN\\\hline
+\texttt{⍋} & 182 & Grade Up & 234b & \$UG\\\hline
+\texttt{\textbackslash{}} & 92 & Expand/Scan & 005c & ---\\\hline
+\texttt{⍀} & 179 & 1st Coord Expand/Scan & 2340 & \$BT\\\hline
+\texttt{∘} & 255 & Outer Product & 2218 & \$NL\\\hline
+\texttt{≤} & 193 & Not Greater Than & 2264 & \$LE\\\hline
+\texttt{<} & 60 & Less Than & 003c & ---\\\hline
+\texttt{>} & 62 & Greater Than & 003e & ---\\\hline
+\texttt{≥} & 192 & Not Less Than & 2265 & \$GE\\\hline
+\texttt{=} & 61 & Equal & 003d & ---\\\hline
+\texttt{≠} & 194 & Not Equal & 2260 & \$NE\\\hline
+\texttt{⍳} & 185 & Index Of/Generator & 2373 & \$IO\\\hline
+\texttt{⍴} & 187 & Reshape/Size & 2374 & \$RO\\\hline
+\texttt{,} & 44 & Join/Ravel & 002c & ---\\\hline
+\texttt{⍒} & 181 & Grade Down & 2352 & \$DG\\\hline
+\texttt{↑} & 177 & Take & 2191 & \$TA\\\hline
+\texttt{↓} & 176 & Drop & 2193 & \$DR\\\hline
+\texttt{:} & 58 & Colon & 003a & ---\\\hline
+\texttt{←} & 160 & Specify/Is & 2190 & \$IS\\\hline
+\texttt{∇} & 180 & Function Definition & 2207 & \$DL\\\hline
+\texttt{⍫} & 159 & Locked Function Definition & 236b & \$LD\\\hline
+\texttt{▯} & 156 & Input/Output/Distinguished Var/Func & 25af & \$QD\\\hline
+\texttt{⍞} & 157 & Input Literal/Output Same Line & 235e & \$QP\\\hline
+\texttt{→} & 155 & Branch & 2192 & \$GO\\\hline
+\texttt{{[}} & 91 & Indexing/Function Index & 005b & ---\\\hline
+\texttt{{]}} & 93 & Indexing/Function Index & 005d & ---\\\hline
+\texttt{;} & 59 & List Separator & 003b & ---\\\hline
+\texttt{(} & 40 & Open Paren & 0028 & ---\\\hline
+\texttt{)} & 41 & Close Paren & 0029 & ---\\\hline
+\texttt{⍝} & 161 & Comment & 235d & \$LP\\\hline
+\texttt{⍙} & 163 & Line Delete & 2359 & \$DU\\\hline
+\hline\hline
+\end{tabular}
+\caption{APL Character Set (Part 2)}
+\label{tab:aplcs2}
+\end{table}
+
+\newpara
+Personally speaking, I think there are better (nicer looking) Unicode characters that match the APL symbols than the
+ones defined in the standard and implemented in APL385, but there it is. Other APLs require more symbols, I
+believe (and more could be defined for NOS APL2, such as underlined characters and so on). Frankly, though,
+\textit{enough is enough!} Although I think it is (just about) worth going to all this trouble to use APL as intended, 
+I can quite
+see how the character set requirements were 
+a major obstacle to APL adoption (and still are, I suspect), and could put a lot of people off!
+No wonder J gave up on them and went back to using ASCII. (Although I do think they have real
+value once you get to know them --- it's just
+the practicalities of using them are daunting, even today).
+\newpara
+In these tables, I-code is the code number used internally in \textbf{GTerm} for the character,
+U-code is the Unicode code point (note how they are scattered all over the place!),
+and B-code is the three character string representation used by NOS APL2 in `batch'
+mode (i.e. when using a terminal that does not natively support an APL character set ---
+none of those known to NOS APL2 made it in to an emulator as far as I can see). The
+B-codes are what \textbf{GTerm} sends to the mainframe when an APL character is `typed', and what the
+mainframe sends back to \textbf{GTerm} to display an APL character.
+
+\subsection{APL and graphics}
+Prior to V0.4, the best that could be done was to write out \textbf{GPLOT} commands to a file and have \textbf{GPLOT} read that
+file to draw graphs. The new graphics commands make it feasible to output graphics directly from APL.
+The details remain under development, but the current version is in workspace \texttt{WSGRAF3}, which provides
+the following functions:
+
+\begin{itemize}
+\item \texttt{GCLR} : Empty the graphics commands list.
+\item \texttt{GCOL r g b} : Set the current drawing colour.
+\item \texttt{GFIL} : Fill the display with the current colour. Could be seen as erase, really.
+\item \texttt{GFLS} : Flush output to GTerm (not really needed).
+\item \texttt{GBNS xlo ylo xhi yhi} : Set the G-Bounds for subsequent plots. This draws the axes, labels ticks and draws a grid.
+\item \texttt{x PLOT y} : Plot y against x (equal length vectors).
+\item \texttt{GMOV x y} : Low level move.
+\item \texttt{GDRW x y} : Low level draw line to.
+\end{itemize}
+
+\newpara
+A simple example of graph plotting using these functions is:
+\newpara
+\hrule
+%%\setmonofont{APL385}
+{\scriptsize
+\begin{verbatim}
+/APL,TT=713.
+APL2.1.014 97/11/06. 09.32.18.
+CLEAR WS
+      ▯load 'wsgraf3'
+WSGRAF3 9/06/03 16:39:22
+      )fns
+GBNS    GCLR    GCOL    GDRW    GFIL    GFLS    GMOV    GWID    JUMP    LINS    PLOT
+      gclr
+      gcol 1 1 1
+      gfil
+      gcol 0 0 0
+      x←lins 0 1 11
+      y←x*2
+      x plot y
+\end{verbatim}
+}
+\hrule
+\newpara
+the result of which is shown in Figure~\ref{fig:graf2}.
+
+\begin{figure}
+	\centering
+		\includegraphics[width=0.8\maxwidth]{gnewaplot.eps}
+	\caption{\textbf{GTerm} Graphics from NOS APL}
+	\label{fig:graf2}
+\end{figure}
+
+
+\section{Data Flow in \textbf{GTerm}}
+Figure \ref{fig:dataflow} shows the relationships between many of the
+main components in \textbf{GTerm} and how they handle incoming and outgoing characters.
+This may be of use if modifying \textbf{GTerm} --- although it isn't fully up-to-date.
+
+\begin{figure}
+	\centering
+		\includegraphics[angle=90,scale=0.8]{gtermdataflow.eps}
+	\caption{Data Flow in \textbf{GTerm}}
+	\label{fig:dataflow}
+\end{figure}
+
+\section{Example \texttt{gtermhostinfo.txt} file}
+This is a simple text file which lists `known hosts', one per line. An example is:
+\begin{lstlisting}
+nos_odroid     192.168.1.148 6610 nos
+nos_odroid_apl 192.168.1.148 6610 nosapl
+\end{lstlisting}
+The space separated fields are: 
+\begin{itemize}
+\item  Displayed host name shown in the \texttt{To:} list.
+\item IP address of the host.
+\item Port number on the host.
+\item Host type name. See Section~\ref{useit} for the options.
+\end{itemize}
+
+\newpara
+The \texttt{gtermhostinfo.txt} file lives in:
+\begin{itemize}
+\item MacOS (binary installation) : \texttt{/Applications/GTerm.app/Contents/MacOS}
+\item Linux or source installations : The current directory when \texttt{gterm.py} is run.
+\end{itemize}
+
+\end{document}

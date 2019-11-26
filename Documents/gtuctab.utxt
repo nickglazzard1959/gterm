@@ -1,0 +1,87 @@
+\begin{table}[H]
+\centering
+\begin{tabular}{||l|l|l|l|l||}
+\hline\hline
+Symbol&I-Code&Meaning&U-Code&B-Code\\
+\hline
+\texttt{.} & 46 & Group/Decimal & \u002e & ---\\\hline
+\texttt{⌹} & 184 & Matrix Inverse/Divide & \u2339 & \$XD\\\hline
+\texttt{⍉} & 154 & Transpose & \u2349 & \$TP\\\hline
+\texttt{⊥} & 150 & Base Value & \u22a5 & \$BV\\\hline
+\texttt{⊤} & 151 & Represent & \u22a4 & \$RP\\\hline
+\texttt{⌽} & 149 & Rotate/Reverse & \u233d & \$RT\\\hline
+\texttt{⊖} & 158 & 1st Coord Rotate/Reverse & \u2296 & \$RU\\\hline
+\texttt{⍎} & 152 & Execute & \u234e & \$EV\\\hline
+\texttt{⍕} & 153 & Format & \u2355 & \$FM\\\hline
+\texttt{▮} & 162 & Bad Char & \u25ae & \$BC\\\hline
+\texttt{⍡} & 164 & Escape from Quote-Quad Input & \u2361 & ---\\\hline
+\texttt{¨} & 166 & Break/Dieresis & \u00a8 & \$DI\\\hline
+\texttt{$} & 36 & Dollar & \u0024 & ---\\\hline
+\texttt{×} & 200 & Multiply & \u00d7 & \$ML\\\hline
+\texttt{÷} & 146 & Divide & \u00f7 & \$DV\\\hline
+\texttt{⌈} & 198 & Maximum/Ceiling & \u2308 & \$MX\\\hline
+\texttt{*} & 42 & Power/Exponential & \u002a & ---\\\hline
+\texttt{|} & 124 & Residue/Magnitude & \u007c & \$MD\\\hline
+\texttt{○} & 195 & Circular Function & \u25cb & \$CI\\\hline
+\texttt{∨} & 191 & And & \u2228 & \$AN\\\hline
+\texttt{⍲} & 189 & Nand & \u2372 & \$ND\\\hline
+\texttt{∊} & 183 & Membership & \u220a & \$EP\\\hline
+\texttt{?} & 63 & Deal/Roll & \u003f & ---\\\hline
+\texttt{/} & 47 & Compress/Reduce & \u002f & ---\\\hline
+\texttt{⌿} & 178 & 1st Coord Compress/Reduce & \u233f & \$SM\\\hline
+\texttt{¯} & 174 & Negative Value & \u00af & \$NG\\\hline
+\texttt{+} & 43 & Add & \u002b & ---\\\hline
+\texttt{-} & 45 & Subtract & \u002d & ---\\\hline
+\texttt{⌋} & 197 & Minimum/Floor & \u230b & \$MN\\\hline
+\texttt{⍟} & 254 & Logarithm & \u235f & \$LG\\\hline
+\texttt{!} & 33 & Combinations/Factorial & \u0021 & ---\\\hline
+\texttt{~} & 126 & Not & \u007e & \$TL\\\hline
+\texttt{∧} & 190 & Or & \u2227 & \$OR\\\hline
+\hline\hline
+\end{tabular}
+\caption{APL Character Set (Part 1)}
+\label{tab:aplcs1}
+\end{table}
+\begin{table}[H]
+\centering
+\begin{tabular}{||l|l|l|l|l||}
+\hline\hline
+Symbol&I-Code&Meaning&U-Code&B-Code\\
+\hline
+\texttt{⍱} & 188 & Nor & \u2371 & \$NR\\\hline
+\texttt{⍪} & 186 & 1st Coord Join & \u236a & \$CN\\\hline
+\texttt{⍋} & 182 & Grade Up & \u234b & \$UG\\\hline
+\texttt{\} & 92 & Expand/Scan & \u005c & ---\\\hline
+\texttt{⍀} & 179 & 1st Coord Expand/Scan & \u2340 & \$BT\\\hline
+\texttt{∘} & 255 & Outer Product & \u2218 & \$NL\\\hline
+\texttt{≤} & 193 & Not Greater Than & \u2264 & \$LE\\\hline
+\texttt{<} & 60 & Less Than & \u003c & ---\\\hline
+\texttt{>} & 62 & Greater Than & \u003e & ---\\\hline
+\texttt{≥} & 192 & Not Less Than & \u2265 & \$GE\\\hline
+\texttt{=} & 61 & Equal & \u003d & ---\\\hline
+\texttt{≠} & 194 & Not Equal & \u2260 & \$NE\\\hline
+\texttt{⍳} & 185 & Index Of/Generator & \u2373 & \$IO\\\hline
+\texttt{⍴} & 187 & Reshape/Size & \u2374 & \$RO\\\hline
+\texttt{,} & 44 & Join/Ravel & \u002c & ---\\\hline
+\texttt{⍒} & 181 & Grade Down & \u2352 & \$DG\\\hline
+\texttt{↑} & 177 & Take & \u2191 & \$TA\\\hline
+\texttt{↓} & 176 & Drop & \u2193 & \$DR\\\hline
+\texttt{:} & 58 & Colon & \u003a & ---\\\hline
+\texttt{←} & 160 & Specify/Is & \u2190 & \$IS\\\hline
+\texttt{∇} & 180 & Function Definition & \u2207 & \$DL\\\hline
+\texttt{⍫} & 159 & Locked Function Definition & \u236b & \$LD\\\hline
+\texttt{▯} & 156 & Input/Output/Distinguished Var/Func & \u25af & \$QD\\\hline
+\texttt{⍞} & 157 & Input Literal/Output Same Line & \u235e & \$QP\\\hline
+\texttt{→} & 155 & Branch & \u2192 & \$GO\\\hline
+\texttt{[} & 91 & Indexing/Function Index & \u005b & ---\\\hline
+\texttt{]} & 93 & Indexing/Function Index & \u005d & ---\\\hline
+\texttt{;} & 59 & List Separator & \u003b & ---\\\hline
+\texttt{(} & 40 & Open Paren & \u0028 & ---\\\hline
+\texttt{)} & 41 & Close Paren & \u0029 & ---\\\hline
+\texttt{⍝} & 161 & Comment & \u235d & \$LP\\\hline
+\texttt{⍙} & 163 & Line Delete & \u2359 & \$DU\\\hline
+\hline\hline
+\end{tabular}
+\caption{APL Character Set (Part 2)}
+\label{tab:aplcs2}
+\end{table}
