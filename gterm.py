@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python3
 """
 gterm.py - A Telnet + OpenGL Terminal Emulator with Graphics and APL Capabilities.
 ==================================================================================
@@ -409,6 +409,26 @@ def main_sep_terminal_telnet():
         sys.stdin.close()
         readchar()
 
+def get_application_file_name( appname, filename, exttest=None ):
+    """
+    Return filename prefixed with a directory path appropriate to the OS.
+    If the expected filedoes not exist, return prefixed by the current directory.
+    """
+    if sys.platform.startswith('darwin'):
+        appdir = '/Applications/{0}.app/Contents/MacOS'.format(appname)
+    else:
+        appdir = '/usr/local/applications/{0}'.format(appname)
+    loc = os.path.join(appdir,filename)
+    if exttest is not None:
+        testloc = loc + exttest
+    else:
+        testloc = loc
+    if not os.path.isfile(testloc):
+        return os.path.join('./',filename)
+    else:
+        return loc
+
+
 ############################
 #    GTerm Widget CLASS    #
 #   Glass teletype using   #
@@ -462,10 +482,7 @@ class GTermWidget(QOpenGLWidget):
         self.oldmouse_y = 0
         # Read character to texture location data, then read the texture
         # image containing the character glyphs.
-        if sys.platform.startswith('darwin'):
-            ourchardata = os.path.join('/Applications/GTerm.app/Contents/MacOS',charsetname)
-        else:
-            ourchardata = charsetname
+        ourchardata = get_application_file_name( 'gterm', charsetname, exttest='.jsn' )
         self.loadCharDefinitions(ourchardata)
         self.visiblelines = self.height_pixels // self.linespace + 1
         self.visiblechars = self.width_pixels // self.charspace + 1
@@ -473,10 +490,7 @@ class GTermWidget(QOpenGLWidget):
         self.vkb_have = False
         self.vkb_tooltip = False
         if vkbname != 'none':
-            if sys.platform.startswith('darwin'):
-                ourvkbdata = os.path.join('/Applications/GTerm.app/Contents/MacOS',vkbname)
-            else:
-                ourvkbdata = vkbname
+            ourvkbdata = get_application_file_name( 'gterm', vkbname, exttest='.jsn' )
             self.loadVkbDefinitions(ourvkbdata)
             self.vkb_down_keynum = -1
         # Create a lock to serialize access to screen data.
@@ -507,10 +521,7 @@ class GTermWidget(QOpenGLWidget):
         self.flog = None
         self.unicode_map = None
         if umapname != 'none':
-            if sys.platform.startswith('darwin'):
-                ourumapname = os.path.join('/Applications/GTerm.app/Contents/MacOS',umapname)
-            else:
-                ourumapname = umapname
+            ourumapname = get_application_file_name( 'gterm', umapname, exttest='.jsn' )
             self.loadUnicodeMap(ourumapname)
         # Graphics commands and state.
         self.gcb = []
@@ -519,11 +530,7 @@ class GTermWidget(QOpenGLWidget):
         self.gchanged = 0
         self.gcbcmds = 0
         # Bell sound.
-        bell_name = 'beep-3.wav' # 'kling.wav'
-        if sys.platform.startswith('darwin'):
-            self.bell_wav = os.path.join('/Applications/GTerm.app/Contents/MacOS',bell_name)
-        else:
-            self.bell_wav = bell_name
+        self.bell_wav = get_application_file_name( 'gterm', 'beep-3.wav' )
         # Ensure control key is still control key (not CMD key) on MacOS. (MAY 2019).
         # Also need to know if MacOS to get hash key.
         self.iam_macos = sys.platform.startswith('darwin')
@@ -2552,13 +2559,12 @@ class GTermTelnetWidget(GTermWidget):
 class AudioFile:
     """
     Play a WAV format audio file with PyAudio.
-    For whatever reason, QSound does not work on Ubuntu Linux.
-    This works, albeit with stupid messages (not easily silenced). Sound is still a mess. 
-    Thanks to 'Mihail' of Nizhegorodskaya Oblast, Russia for this example code.
     """
     chunk = 1024
     def __init__(self, file):
-        """ Init audio stream """ 
+        """
+        Init audio stream
+        """ 
         self.wf = wave.open(file, 'rb')
         self.p = pyaudio.PyAudio()
         self.stream = self.p.open(
@@ -2569,29 +2575,35 @@ class AudioFile:
         )
 
     def play(self):
-        """ Play entire file """
+        """
+        Play entire file 
+        """
         data = self.wf.readframes(self.chunk)
-        while data != '':
+        print('frame length =',len(data))
+        while len(data) > 0:
             self.stream.write(data)
             data = self.wf.readframes(self.chunk)
 
     def close(self):
-        """ Graceful shutdown """ 
+        """
+        Graceful shutdown
+        """
+        self.stream.stop_stream()
         self.stream.close()
         self.p.terminate()
 
 def make_noise(wavfile):
-    """Make an arbitrary sound by playing a specified WAV file."""
-    print('make_noise() BUT NOT.')
-    return
+    """
+    Make an arbitrary sound by playing a specified WAV file.
+    """
     a = AudioFile(wavfile)
     a.play()
     a.close()
 
-################################
-# MAIN PROGRAM                 #
-# PyQt 5 GUI terminal program. #
-################################
+#################################
+# MAIN PROGRAM                  #
+# PySide2 GUI terminal program. #
+#################################
 
 if __name__ == '__main__':
 
@@ -2778,12 +2790,10 @@ if __name__ == '__main__':
             super(TerminalDialog,self).__init__(parent)
             # Try to have the dialog show a minimize icon.
             windowflags = Qt.Window | Qt.WindowSystemMenuHint | \
-                Qt.WindowMinimizeButtonHint | Qt.WindowCloseButtonHint;
-            self.setWindowFlags(windowflags);
-            if sys.platform.startswith('darwin'):
-                self.setWindowIcon(QIcon('/Applications/GTerm.app/Contents/Resources/gterm.png'))
-            else:
-                self.setWindowIcon(QIcon('gtermicon.png'))
+                Qt.WindowMinimizeButtonHint | Qt.WindowCloseButtonHint
+            self.setWindowFlags(windowflags)
+            ouriconname = get_application_file_name( 'gterm', 'gtermicon.png' )
+            self.setWindowIcon( QIcon( ouriconname ) )
             self.setWindowTitle('GTerm')
             # Log file name and location.
             self.lfname = ''
@@ -2901,10 +2911,7 @@ if __name__ == '__main__':
             """
             self.hostinfo = [['localhost','localhost',23,'unix']]
             try:
-                if sys.platform.startswith('darwin'):
-                    ourhostinfo = os.path.join('/Applications/GTerm.app/Contents/MacOS','gtermhostinfo.txt')
-                else:
-                    ourhostinfo = 'gtermhostinfo.txt'
+                ourhostinfo = get_application_file_name( 'gterm', 'gtermhostinfo.txt' )
                 flun = open(ourhostinfo,'r')
                 linenum = 0
                 for line in flun:
