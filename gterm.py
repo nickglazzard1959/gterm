@@ -27,44 +27,116 @@ Original written in 2013 as a Python learning exercise.
 # Imports ... Lots of them!
 import sys
 try:
-    from OpenGL.GL import *
-    from OpenGL.GLU import *
+    from OpenGL.GL import GL_ALPHA
+    from OpenGL.GL import GL_BGRA
+    from OpenGL.GL import GL_BLEND
+    from OpenGL.GL import GL_CLAMP
+    from OpenGL.GL import GL_COLOR_BUFFER_BIT
+    from OpenGL.GL import GL_FLAT
+    from OpenGL.GL import GL_LINEAR
+    from OpenGL.GL import GL_LINEAR_MIPMAP_LINEAR
+    from OpenGL.GL import GL_LINES
+    from OpenGL.GL import GL_LUMINANCE
+    from OpenGL.GL import GL_MODULATE
+    from OpenGL.GL import GL_NEAREST
+    from OpenGL.GL import GL_ONE_MINUS_SRC_ALPHA
+    from OpenGL.GL import GL_POLYGON
+    from OpenGL.GL import GL_PROJECTION
+    from OpenGL.GL import GL_QUADS
+    from OpenGL.GL import GL_RGB8
+    from OpenGL.GL import GL_SRC_ALPHA
+    from OpenGL.GL import GL_TEXTURE_2D
+    from OpenGL.GL import GL_TEXTURE_ENV
+    from OpenGL.GL import GL_TEXTURE_ENV_MODE
+    from OpenGL.GL import GL_TEXTURE_MAG_FILTER
+    from OpenGL.GL import GL_TEXTURE_MIN_FILTER
+    from OpenGL.GL import GL_TEXTURE_WRAP_S
+    from OpenGL.GL import GL_TEXTURE_WRAP_T
+    from OpenGL.GL import GL_UNPACK_ALIGNMENT
+    from OpenGL.GL import GL_UNSIGNED_BYTE
+    from OpenGL.GL import GL_UNSIGNED_INT_8_8_8_8_REV
+    from OpenGL.GL import glBegin
+    from OpenGL.GL import glBindTexture
+    from OpenGL.GL import glBlendFunc
+    from OpenGL.GL import glClear
+    from OpenGL.GL import glClearColor
+    from OpenGL.GL import glColor4f
+    from OpenGL.GL import glDisable
+    from OpenGL.GL import glEnable
+    from OpenGL.GL import glEnd
+    from OpenGL.GL import glFlush
+    from OpenGL.GL import glGenTextures
+    from OpenGL.GL import glLineWidth
+    from OpenGL.GL import glLoadIdentity
+    from OpenGL.GL import glMatrixMode
+    from OpenGL.GL import glOrtho
+    from OpenGL.GL import glPixelStorei
+    from OpenGL.GL import glRectf
+    from OpenGL.GL import glShadeModel
+    from OpenGL.GL import glTexCoord2f
+    from OpenGL.GL import glTexEnvi
+    from OpenGL.GL import glTexImage2D
+    from OpenGL.GL import glTexParameterf
+    from OpenGL.GL import glVertex2f
+    from OpenGL.GL import glViewport
+    
+    from OpenGL.GLU import gluBuild2DMipmaps
 except ImportError:
     print("GTerm needs PyOpenGL.")
     sys.exit(9)
+
 try:
-    from PySide2.QtCore import *
-    from PySide2.QtGui import *
-    from PySide2.QtWidgets import *
+    from PySide2.QtCore import QCoreApplication
+    from PySide2.QtCore import QEvent
+    from PySide2.QtCore import QRect
+    from PySide2.QtCore import Qt
+
+    from PySide2.QtGui import QIcon
+
+    from PySide2.QtWidgets import QApplication
+    from PySide2.QtWidgets import QCheckBox
+    from PySide2.QtWidgets import QComboBox
+    from PySide2.QtWidgets import QDialog
+    from PySide2.QtWidgets import QFileDialog
+    from PySide2.QtWidgets import QHBoxLayout
+    from PySide2.QtWidgets import QLabel
+    from PySide2.QtWidgets import QLineEdit
+    from PySide2.QtWidgets import QOpenGLWidget
+    from PySide2.QtWidgets import QPushButton
+    from PySide2.QtWidgets import QScrollArea
+    from PySide2.QtWidgets import QSpinBox
+    from PySide2.QtWidgets import QVBoxLayout
+    from PySide2.QtWidgets import QWidget
+
 except ImportError:
     print("GTerm needs PySide2.")
     sys.exit(9)
-try:
-    from PySide2.QtOpenGL import *
-except ImportError:
-    print("GTerm needs QtOpenGL.")
-    sys.exit(9)
+
 try:
     from PIL import Image
 except ImportError:
     print("GTerm needs Python Imaging Library.")
     sys.exit(9)
+    
 try:
     import numpy
 except ImportError:
     print("GTerm needs Numpy.")
     sys.exit(9)
+    
 import optparse
 import select
 import socket
 # Now here's a thing: import * below leaves constants undefined ...
 from telnetlib import Telnet, DO, DONT, WILL, WONT, IAC, ECHO, SGA
 import tty
+
 try:
     import termios
 except ImportError:
     print("GTerm needs termios.")
     sys.exit(9)
+    
 import threading
 import time
 import string
@@ -73,6 +145,7 @@ import codecs
 import os
 import shutil
 import math
+
 try:
     import grid
 except ImportError:
@@ -91,10 +164,12 @@ try:
 except ImportError:
     print("GTerm needs PyAudio and Wave audio format.")
     sys.exit(9)
+
 try:
     from githashvalue import _current_git_hash
 except ImportError:
     _current_git_hash="0000000000000000000000000000000000000000"
+
 try:
     from githashvalue import _current_git_desc
 except ImportError:
@@ -607,7 +682,6 @@ class GTermWidget(QOpenGLWidget):
             input_keydata = json.load(flun)
             flun.close()
             self.vkb_keymap = {}
-            vkblayoutdict = {}
             inputkeyposmap = input_keydata['keyposmap']
             for k in inputkeyposmap:
                 try:
@@ -1159,7 +1233,7 @@ class GTermWidget(QOpenGLWidget):
         In most applications (all?) the modifer key states will not be available,
         so this is almost always more complex than necessary.
         """
-        screenAddCharSimple(charnum,is_printable,do_update)
+        self.screenAddCharSimple(charnum,is_printable,do_update)
 
     def screenAddCharSimple(self,charnum,is_printable,do_update):
         """
