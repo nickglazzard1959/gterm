@@ -107,6 +107,7 @@ try:
     from PySide2.QtWidgets import QSpinBox
     from PySide2.QtWidgets import QVBoxLayout
     from PySide2.QtWidgets import QWidget
+    from PySide2.QtWidgets import QMessageBox
 
 except ImportError:
     print("GTerm needs PySide2.")
@@ -349,11 +350,13 @@ class XTelnet(Telnet,object):
         if sys.platform == "win32":
             return
         while 1:
-            rfd, wfd, xfd = select.select([self], [], [])
+            try:
+                rfd, wfd, xfd = select.select([self], [], [])
+            except OSError:
+                return # Something using XTelnet has probably closed the connection. Ugly, but ...
             if self in rfd:
                 try:
                     text = self.read_eager()
-                    #dumpData(text)
                 except EOFError:
                     if self.eof_func != None:
                         self.eof_func()
@@ -2691,7 +2694,10 @@ if __name__ == '__main__':
              "DLE","DC1","DC2","DC3","DC4","NAK","SYN","ETB",
              "CAN"," EM","SUB","ESC"," FS"," GS"," RS"," US"]
         out = ''
-        oc = ord(c)
+        if type(c) == int:
+            oc = c
+        else:
+            oc = ord(c)
         if oc > 31 and oc < 127:
             if simple:
                 out += c
@@ -2912,7 +2918,7 @@ if __name__ == '__main__':
             # Set default host to be localhost, port 23, unix mode.
             self.hostAddressEdit = QLineEdit("localhost")
             self.portNumberSpinbox = QSpinBox()
-            self.portNumberSpinbox.setRange(1,9999)
+            self.portNumberSpinbox.setRange(1,99999)
             self.portNumberSpinbox.setValue(23)
             self.connectPushButton = QPushButton("Connect")
             self.clearPushButton = QPushButton("Clear")
@@ -3065,8 +3071,9 @@ if __name__ == '__main__':
                     shutil.move(self.lfname,str(fname))
                     self.logfilename()
                     self.screen.openLogFile(self.lfname)
-            except:
+            except Exception as e:
                 print('renamelog(): Do not understand:',self.lfname,str(fname))
+                print('... reason:',e)
 
         def savegraf(self):
             """
@@ -3077,8 +3084,9 @@ if __name__ == '__main__':
                 fname = fname[0]
                 if len(fname) > 0:
                     self.screen.saveGraphics(str(fname))
-            except:
+            except Exception as e:
                 print('savegraf(): Do not understand:',str(fname))
+                print('... reason:',e)
 
         def showvkb(self):
             """
@@ -3323,6 +3331,24 @@ if __name__ == '__main__':
             self.scrollAreaWidgetContents.setGeometry(QRect(10,10,550,650))
             self.scrollArea.setWidget(self.statLabel)
             self.scrollArea.show()
+
+        def closeEvent(self, event):
+            """
+            Intercept close program event.
+            """
+            quit_msg = "Exit GTerm?"
+            reply = QMessageBox.question(self, 'GTerm Exit Warning', quit_msg, QMessageBox.Yes, QMessageBox.No)
+            if reply == QMessageBox.Yes:
+                # If there is an open connection, close it so the server end disconnects.
+                # The read input thread is still running and will not like this, but ...
+                if self.screen.haveconnection:
+                    try:
+                        self.screen.telnet.close()
+                    except:
+                        pass
+                event.accept()
+            else:
+                event.ignore()
 
     # Main line
     if sys.platform.startswith('darwin'):
