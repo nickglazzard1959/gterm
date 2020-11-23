@@ -33,7 +33,7 @@ def _bytestostr( ccharpin ):
 
 class GServerCommand(object):
     """ 
-    Define commands that can be sent to the server.
+    Define commands that can be sent to the GServerThread server.
     START:    No data.
     SEND:     Bytes to send.
     RECV:     No data.
@@ -46,8 +46,8 @@ class GServerCommand(object):
 
 class GServerMessage(object):
     """ 
-    Define messages that the server can put on its output queue.
-    N.B. The server's output queue is the input to the viewer program.
+    Define messages that the GServerThread server can put on its output queue.
+    N.B. The server's output queue is the input to the software that uses GServerThread.
          ERROR:    Error message string.
          SUCCESS:  Received data.
     """
@@ -59,7 +59,12 @@ class GServerMessage(object):
 
 class GServerThread(threading.Thread):
     """ 
-    A simple TCP/IP server
+    A simple TCP/IP server that GTerm can connect to. Once it is running and a connection has been
+    made, commands sent over a Queue (cmdq) can send data to GTerm and data from GTerm can be delivered
+    to a second Queue (outq). This allows GTerm to be used from a program without data going via stdin
+    and stdout.
+    The use of Queues is because this TCP/IP server must run on a separate thread to avoid unwanted
+    blocking i/o.
     """
 
     def __init__(self, cmdq, outq, port=51234, debuglevel=0):
@@ -111,7 +116,7 @@ class GServerThread(threading.Thread):
 
     def server(self):
         """
-        Implement a minimal TCP/IP server to receive ndarray data from a client.
+        Implement a minimal TCP/IP server to communicate bi-directionally with a GTerm instance.
         """
         if self.debuglevel > 1:
             print('GserverThread.server() called.')
@@ -156,7 +161,6 @@ class GServerThread(threading.Thread):
                         print('type(cmd):',type(cmd))
                         print('cmd:',cmd.type)
                     
-
                     # Send data to GTerm?
                     if cmd.type == GServerCommand.SEND:
                         if self.debuglevel > 1:
@@ -201,6 +205,10 @@ class GServerThread(threading.Thread):
         return GServerMessage(GServerMessage.SUCCESS, data)
 
 class GTermComms(object):
+    """
+    Create and start a GServerThread server then communicate with it and hence with any
+    connected GTerm.
+    """
 
     def __init__(self, port=51234, debuglevel=0):
         super(GTermComms,self).__init__()
@@ -223,6 +231,9 @@ class GTermComms(object):
     def send(self, data):
         if self._is_ready():
             self.cmdq.put(GServerCommand(GServerCommand.SEND, data))
+            return True
+        else:
+            return False
 
     def receive(self, timeout=None):
         if self._is_ready():
@@ -241,6 +252,110 @@ class GTermComms(object):
                 return _bytestostr(received.data)
         else:
             return None
+
+class GTermLib(object):
+    """
+    Drawing library for GTerm.
+    """
+
+    def __init__(self, port=51234, debuglevel=0):
+        self.comms = GTermComms(port=port, debuglevel=debuglevel)
+
+    def ready(self):
+        return self.comms._is_ready()
+
+    def clamp(self,v,lo,hi):
+        return max(lo,min(v,hi))
+
+    def clear(self):
+        return self.comms.send('@[0@')
+
+    def colour(self,r,g,b):
+        ir = self.clamp(r,0.0,1.0)
+        ig = self.clamp(g,0.0,1.0)
+        ib = self.clamp(b,0.0,1.0)
+        s = '@[1 {0:.3f} {1:.3f} {2:.3f} @'.format(ir,ig,ib)
+        return self.comms.send(s)
+
+    def erase(self):
+        return self.comms.send('@[2@')
+
+    def pen(self,x,y,z):
+        if z > 0:
+            c = 4
+        else:
+            c = 3
+        s = '@[{0} {1} {2} @'.format(c,x,y)
+        return self.comms.send(s)
+
+    def move(self,x,y):
+        return self.pen(x,y,0)
+
+    def draw(self,x,y):
+        return self.pen(x,y,1)
+
+    def flush(self):
+        return self.comms.send('@[5@')        
+
+    def width(self,w):
+        iw = self.clamp(w,0.0,9.0)
+        s = '@[6 {0} @'.format(iw)
+        return self.comms.send(s)
+
+    def bounds(self,xlo,ylo,xhi,yhi):
+        s = '@[7 {0} {1} {2} {3} @'.format(xlo,ylo,xhi,yhi)
+        return self.comms.send(s)
+
+    def gbounds(self,xlo,ylo,xhi,yhi):
+        s = '@[8 {0} {1} {2} {3} @'.format(xlo,ylo,xhi,yhi)
+        return self.comms.send(s)
+
+    def text(self,string):
+        s = '@[9 {0} @'.format(string)
+        return self.comms.send(s)
+
+    def textsize(self,size):
+        size = max(3,size)
+        s = '@[A {0} @'.format(size)
+        return self.comms.send(s)
+        
+    def textalign(self,alignment):
+        aldict = {'left':0,'center':1,'right':2,'dispcenter':3}
+        try:
+            alcode = aldict[alignment]
+        except:
+            print( 'Unknown alignment name:',alignment )
+            return
+        s = '@[B {0} @'.format(alcode)
+        return self.comms.send(s)
+
+    def textfont(self,fontname):
+        fndict = {'serif':0,'sans':1,'fixed':2}
+        try:
+            fncode = fndict[fontname]
+        except:
+            print( 'Unknown font name:',fontname )
+            return
+        s = '@[C {0} @'.format(fncode)
+        return self.comms.send(s)
+
+    def point(self,x,y):
+        s = '@[D {0} {1} @'.format(x,y)
+        return self.comms.send(s)       
+
+    def title(self,string):
+        s = '@[E {0} @'.format(string)
+        return self.comms.send(s)
+
+    def circle(self,x,y,r):
+        s = '@[F {0} {1} {2}  @'.format(x,y,r)
+        return self.comms.send(s)
+
+    def square_bounds(self,yes):
+        iyes = 1 if yes else 0
+        s = '@[G {0} @'.format(iyes)
+        return self.comms.send(s)
+    
         
 
 if __name__ == "__main__":
