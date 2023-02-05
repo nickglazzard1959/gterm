@@ -23,6 +23,7 @@ Original written in 2013 as a Python learning exercise.
 - Modified 23/24-MAY-2019 to add history recall and editing. Idiotic file transfer stuff removed.
 - Modified 29/30-MAY-2019 to add graph plotting commands. Cairo rendering arguably improved.
 - Converted to Python 3 26-NOV-2019. Also now uses PySide2 instead of PyQt5.
+- Added square/non-square aspect ratio switching and graphics zoom 3/4-FEB-2023.
 """
 # Imports ... Lots of them!
 import sys
@@ -36,6 +37,7 @@ try:
     from OpenGL.GL import GL_LINEAR
     from OpenGL.GL import GL_LINEAR_MIPMAP_LINEAR
     from OpenGL.GL import GL_LINES
+    from OpenGL.GL import GL_LINE_LOOP
     from OpenGL.GL import GL_LUMINANCE
     from OpenGL.GL import GL_MODULATE
     from OpenGL.GL import GL_NEAREST
@@ -361,6 +363,10 @@ class XTelnet(Telnet,object):
                     if self.eof_func != None:
                         self.eof_func()
                     break
+                except Exception as e:
+                    print('Unexpected exception reading from server (client slept?):',e)
+                    print('Abandoning connection.')
+                    break
                 if text:
                     if self.received_function != None:
                         self.received_function(text)
@@ -607,6 +613,17 @@ class GTermWidget(QOpenGLWidget):
         self.gcblock = threading.Lock()
         self.gchanged = 0
         self.gcbcmds = 0
+        self.xlo = 0.0
+        self.ylo = 0.0
+        self.xhi = 1.0
+        self.yhi = 1.0
+        self.make_square = False
+        self.zoom_xlo = 0.0
+        self.zoom_ylo = 0.0
+        self.zoom_xhi = 0.0
+        self.zoom_yhi = 0.0
+        self.zoom_box = False
+        self.zoomed = False
         # Bell sound.
         self.bell_wav = get_application_file_name( 'gterm', 'beep-3.wav' )
         # Ensure control key is still control key (not CMD key) on MacOS. (MAY 2019).
@@ -764,7 +781,7 @@ class GTermWidget(QOpenGLWidget):
         else:
             if self.havefocus:
                 if self.haveconnection:
-                    return (0.1,0.1,0.8,1.0)
+                    return (0.0157,0.102,0.494,1.0)
                 else:
                     return (0.8,0.1,0.1,1.0)
             else:
@@ -923,6 +940,16 @@ class GTermWidget(QOpenGLWidget):
                 glVertex2f(0.0,self.height_pixels)
                 glEnd()
                 glDisable(GL_TEXTURE_2D)
+                # Draw a zoom box?
+                if self.zoom_box and (not self.zoomed):
+                    xmult = self.height_pixels if self.make_square else self.width_pixels
+                    glColor4f(0.1,0.9,0.1,1.0)
+                    glBegin(GL_LINE_LOOP)
+                    glVertex2f(self.zoom_xlo*xmult,self.zoom_ylo*self.height_pixels)
+                    glVertex2f(self.zoom_xhi*xmult,self.zoom_ylo*self.height_pixels)
+                    glVertex2f(self.zoom_xhi*xmult,self.zoom_yhi*self.height_pixels)
+                    glVertex2f(self.zoom_xlo*xmult,self.zoom_yhi*self.height_pixels)
+                    glEnd()
                     
         # Text drawing.
         else:
@@ -1609,6 +1636,12 @@ class GTermWidget(QOpenGLWidget):
             if not self.vkb_tooltip:
                 if self.vkb_down_keynum >= 0:
                     self.keyboardGotChar(self.vkb_keymap[self.vkb_down_keynum][0],False,False,False,True)
+        # Graphics zoom box starts? Yes, if not already zoomed.
+        if self.drawgraf and (not self.zoomed):
+            xdiv = self.height_pixels if self.make_square else self.width_pixels
+            self.zoom_xlo = float(mouseEvent.x()) / xdiv
+            self.zoom_ylo = float(self.height_pixels-mouseEvent.y()) / self.height_pixels
+            self.zoom_box = True
 
     def mouseReleaseEvent(self,mouseEvent):
         """
@@ -1617,6 +1650,25 @@ class GTermWidget(QOpenGLWidget):
         if self.debuglevel > 0:
             print('Mouse release. Pos=({0},{1})'.format(mouseEvent.x(),mouseEvent.y()))
         self.vkb_down_keynum = -1
+        # Graphics zoom box? If so and not zoomed, set zoom parameters and go to zoomed.
+        if self.drawgraf and self.zoom_box and (not self.zoomed):
+            xdiv = self.height_pixels if self.make_square else self.width_pixels
+            self.zoom_xhi = float(mouseEvent.x()) / xdiv
+            self.zoom_yhi = float(self.height_pixels-mouseEvent.y()) / self.height_pixels
+            sxlo = min(self.zoom_xlo,self.zoom_xhi)
+            sylo = min(self.zoom_ylo,self.zoom_yhi)
+            sxhi = max(self.zoom_xlo,self.zoom_xhi)
+            syhi = max(self.zoom_ylo,self.zoom_yhi)
+            sxc = 0.5 * (sxlo + sxhi)
+            syc = 0.5 * (sylo + syhi)
+            ds = 0.25 * ((sxhi - sxlo) + (syhi - sylo))
+            self.zoom_box = False
+            if( ds > 0.01 ):
+                self.xlo = sxc - ds
+                self.ylo = syc - ds
+                self.xhi = sxc + ds
+                self.yhi = syc + ds
+                self.zoomed = True
         self.update()
 
     def mouseDoubleClickEvent(self,mouseEvent):
@@ -1625,6 +1677,15 @@ class GTermWidget(QOpenGLWidget):
         """
         if self.debuglevel > 0:
             print('Mouse double click.')
+        # If zoomed, reset zoom parameters and go to not zoomed.
+        if self.drawgraf and self.zoomed:
+            self.xlo = 0.0
+            self.ylo = 0.0
+            self.xhi = 1.0
+            self.yhi = 1.0
+            self.zoom_box = False
+            self.zoomed = False
+        self.update()
 
     def mouseMoveEvent(self,mouseEvent):
         """
@@ -1636,6 +1697,12 @@ class GTermWidget(QOpenGLWidget):
             delta_y = self.oldmouse_y - mouseEvent.y()
             if self.debuglevel > 0:
                 print('Mouse drag. Delta=({0},{1})'.format(delta_x,delta_y))
+            # Update zoom box if we are setting one.
+            if self.drawgraf and self.zoom_box and (not self.zoomed):
+                xdiv = self.height_pixels if self.make_square else self.width_pixels
+                self.zoom_xhi = float(mouseEvent.x()) / xdiv
+                self.zoom_yhi = float(self.height_pixels-mouseEvent.y()) / self.height_pixels
+                self.update()
         self.oldmouse_x = mouseEvent.x()
         self.oldmouse_y = mouseEvent.y()
 
@@ -1937,6 +2004,13 @@ class GTermWidget(QOpenGLWidget):
         self.drawgraf = False
         self.update()
 
+    def toggleSquare(self):
+        """
+        Graphics: Toggle square drawing mode.
+        """
+        self.make_square = not self.make_square
+        self.update()
+
     def doGrUpdate(self,location):
         """
         Re-paint the graphics screen. This is always called indirectly
@@ -1984,16 +2058,21 @@ class GTermWidget(QOpenGLWidget):
         pmy = 0.0
 
         # Set the initial state variables.
-        x_scale = to_x_pixels
-        y_scale = to_y_pixels
-        x_offset = 0.0
-        y_offset = 0.0
+        if self.make_square:
+            y_offset = self.ylo
+            y_scale = to_y_pixels / max(1e-6, self.yhi - self.ylo)
+            x_offset = self.xlo
+            x_scale = y_scale
+        else:
+            x_offset = self.xlo
+            x_scale = to_x_pixels / max(1e-6, self.xhi - self.xlo)
+            y_offset = self.ylo
+            y_scale = to_y_pixels / max(1e-6, self.yhi - self.ylo)
         width = 1.0
         gcolour = [1.0, 1.0, 1.0]
         fontsize = 14
         fontindex = 0
         textalign = 0
-        make_square = False
 
         # Set font attributes in case text is drawn.
         c.select_font_face( fontnames[fontindex], cairo.FONT_SLANT_NORMAL, cairo.FONT_WEIGHT_NORMAL )
@@ -2199,9 +2278,9 @@ class GTermWidget(QOpenGLWidget):
         if self.gcbcmds > 0:
             (root,ext) = os.path.splitext(filename)
             outfilename = root + '.svg'
-            s = cairo.SVGSurface(outfilename,self.width_pixels,self.height_pixels)
+            s = cairo.SVGSurface(outfilename,self.width_pixels,self.height_pixels) # watch out
             c = cairo.Context(s)
-            self.cairoRenderGraphics(c,self.width_pixels,self.height_pixels)
+            self.cairoRenderGraphics(c,self.width_pixels,self.height_pixels) # watch out
             s.finish()
 
     def cairoRenderGraphicsToTexture(self,imwidth,imheight):
@@ -2600,7 +2679,7 @@ class GTermTelnetWidget(GTermWidget):
         if self.debuglevel > 2:
             print('event() event =',event)
         altkeymap = {Qt.Key_G:1,Qt.Key_T:2,Qt.Key_K:3,Qt.Key_U:4,Qt.Key_D:5,Qt.Key_H:6,
-                     Qt.Key_PageUp:4,Qt.Key_PageDown:5,Qt.Key_Home:6,Qt.Key_A:7}
+                     Qt.Key_PageUp:4,Qt.Key_PageDown:5,Qt.Key_Home:6,Qt.Key_A:7,Qt.Key_S:8}
         spckeymap = {Qt.Key_PageUp:4,Qt.Key_PageDown:5,Qt.Key_Home:6}
         if event.type() == QEvent.KeyPress:
             key = event.key()
@@ -2984,7 +3063,8 @@ if __name__ == '__main__':
             elif kcode == 6: # h: no scroll OR Home
                 self.screen.setScroll(0)
                 self.screen.clearModifiers()
-                
+            elif kcode == 8: # s: toggle graphics square mode
+                self.screen.toggleSquare()
 
         def read_host_data(self):
             """
