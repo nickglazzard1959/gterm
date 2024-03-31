@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 gterm.py - A Telnet + OpenGL Terminal Emulator with Graphics and APL Capabilities.
 ==================================================================================
@@ -8,22 +7,27 @@ gterm.py - A Telnet + OpenGL Terminal Emulator with Graphics and APL Capabilitie
 * The mapping between keys and code points can also be changed at will and there are several 
   other features that make for a flexible environment for implementing 'unusual' command line
   interfaces to 'unusual' host systems.
-* There is a vector graphics display capability which could easily be extended in all sorts of
-  ways.
-* There is a virtual keyboard facility currently used allow easy input of APL symbols.
+* There is a vector graphics display capability which supports saving as SVG.
+* There is a virtual keyboard facility currently used to allow easy input of APL symbols.
 * The default character glyphs also provide APL symbols (and many other 'scientific' characters).
 
 What it does not do:
 - There is no character cell addressability. I.e. it is like a teletype, not a VT100 etc.
 - ANSI command strings are thrown away (cleanly) - except for our own graphics commands.
 
-Original written in 2013 as a Python learning exercise.
+Originally written in 2013 as a Python learning exercise.
+
 - Modified 31-MAR-2017 for PyQt 5 compatibility.
 - Modified April 2019 to get backspace behaviour to appear as expected today.
 - Modified 23/24-MAY-2019 to add history recall and editing. Idiotic file transfer stuff removed.
 - Modified 29/30-MAY-2019 to add graph plotting commands. Cairo rendering arguably improved.
 - Converted to Python 3 26-NOV-2019. Also now uses PySide2 instead of PyQt5.
 - Added square/non-square aspect ratio switching and graphics zoom 3/4-FEB-2023.
+- Fixed cross-thread calls using new type signal/slot mechanism. 26-MAR-2024.
+- Port to PySide6/Qt6 (pretty simple). 27-MAR-2024.
+- Changes for packaging with pip. 29-MAR-2024.
+- Added text buffer cut and paste via Clipman. 30-MAR-2024.
+- Silence meaningless OS error messages on (some) Linux systems from PyAudio. 31-MAR-2024.
 """
 # Imports ... Lots of them!
 import sys
@@ -88,31 +92,34 @@ except ImportError:
     sys.exit(9)
 
 try:
-    from PySide2.QtCore import QCoreApplication
-    from PySide2.QtCore import QEvent
-    from PySide2.QtCore import QRect
-    from PySide2.QtCore import Qt
+    from PySide6.QtCore import QCoreApplication
+    from PySide6.QtCore import QEvent
+    from PySide6.QtCore import QRect
+    from PySide6.QtCore import Qt
+    from PySide6.QtCore import Signal
+    from PySide6.QtCore import QObject
 
-    from PySide2.QtGui import QIcon
+    from PySide6.QtGui import QIcon
 
-    from PySide2.QtWidgets import QApplication
-    from PySide2.QtWidgets import QCheckBox
-    from PySide2.QtWidgets import QComboBox
-    from PySide2.QtWidgets import QDialog
-    from PySide2.QtWidgets import QFileDialog
-    from PySide2.QtWidgets import QHBoxLayout
-    from PySide2.QtWidgets import QLabel
-    from PySide2.QtWidgets import QLineEdit
-    from PySide2.QtWidgets import QOpenGLWidget
-    from PySide2.QtWidgets import QPushButton
-    from PySide2.QtWidgets import QScrollArea
-    from PySide2.QtWidgets import QSpinBox
-    from PySide2.QtWidgets import QVBoxLayout
-    from PySide2.QtWidgets import QWidget
-    from PySide2.QtWidgets import QMessageBox
+    from PySide6.QtWidgets import QApplication
+    from PySide6.QtWidgets import QCheckBox
+    from PySide6.QtWidgets import QComboBox
+    from PySide6.QtWidgets import QDialog
+    from PySide6.QtWidgets import QFileDialog
+    from PySide6.QtWidgets import QHBoxLayout
+    from PySide6.QtWidgets import QLabel
+    from PySide6.QtWidgets import QLineEdit
+    from PySide6.QtWidgets import QPushButton
+    from PySide6.QtWidgets import QScrollArea
+    from PySide6.QtWidgets import QSpinBox
+    from PySide6.QtWidgets import QVBoxLayout
+    from PySide6.QtWidgets import QWidget
+    from PySide6.QtWidgets import QMessageBox
+
+    from PySide6.QtOpenGLWidgets import QOpenGLWidget
 
 except ImportError:
-    print("GTerm needs PySide2.")
+    print("GTerm needs PySide6.")
     sys.exit(9)
 
 try:
@@ -146,13 +153,8 @@ import codecs
 import os
 import shutil
 import math
+import contextlib
 
-try:
-    import grid
-except ImportError:
-    print("GTerm needs grid.")
-    sys.exit(9)
-    
 try:
     import cairo
 except:
@@ -167,6 +169,12 @@ except ImportError:
     sys.exit(9)
 
 try:
+    import clipman
+except ImportError:
+    print("GTerm needs Clipman.")
+    sys.exit(9)
+
+try:
     from githashvalue import _current_git_hash
 except ImportError:
     _current_git_hash="0000000000000000000000000000000000000000"
@@ -174,7 +182,12 @@ except ImportError:
 try:
     from githashvalue import _current_git_desc
 except ImportError:
-    _current_git_desc="v?.?"
+    _current_git_desc="v0.8.0"
+
+# Track lock usage for debugging purposes.
+global_s_lock = 0  # Screen character buffer.
+global_g_lock = 0  # Graphics command buffer.
+
 
 ################################################
 # Telnet class liberated from CPython Github   #
@@ -216,7 +229,6 @@ To do:
   option on one of the read calls only
 
 """
-
 
 # Imported modules
 import sys
@@ -954,7 +966,8 @@ class XTelnet(Telnet,object):
                 if not line:
                     break
                 line = line.replace('\n','\r\n') # NG: Otherwise no host I've tried gets any data.
-                self.write(line)
+                bytestring = line.encode('ASCII')
+                self.write(bytestring)
 
     def interact_ch(self):
         """
@@ -991,9 +1004,9 @@ class XTelnet(Telnet,object):
                     break
                 # Make sure <return> (key) actually sends <CR><LF> as Telnet defines it should.
                 if getch == '\r':
-                    self.write('\r\n')
-                else:
-                    self.write(getch)
+                    getch = '\r\n'
+                bytestring = getch.encode('ASCII')
+                self.write(bytestring)
 
     def set_data_received_function(self,data_received):
         '''
@@ -1009,12 +1022,12 @@ class XTelnet(Telnet,object):
             return
         while 1:
             try:
-                rfd, wfd, xfd = select.select([self], [], [])
+                rfd, wfd, xfd = select.select([self], [], []) #NO timeout
             except OSError:
                 return # Something using XTelnet has probably closed the connection. Ugly, but ...
             if self in rfd:
                 try:
-                    text = self.read_eager()
+                    text = self.read_eager() #read_eager()
                 except EOFError:
                     if self.eof_func != None:
                         self.eof_func()
@@ -1056,8 +1069,9 @@ def main_terminal_telnet():
 
     try:
         session = XTelnet(options.address, options.port)
-    except:
+    except Exception as e:
         print('telnetlib error: could not connect to ', options.address, ' ', options.port)
+        print('... Reason:', e)
     else:
         #session.set_debuglevel(10)
         session.interact_ch()
@@ -1088,9 +1102,9 @@ def readchar_thread(session,junk):
             break
         # Make sure <return> (key) actually sends <CR><LF> as Telnet defines it should.
         if getch == '\r':
-            session.write('\r\n')
-        else:
-            session.write(getch)
+            getch = '\r\n'
+        bytestring = getch.encode('ASCII')
+        session.write(bytestring)
 
 def readserver_thread(session,junk):
     """
@@ -1103,7 +1117,8 @@ def received_data_func(text):
     Do something with the data received from the server. Such as display it!
     Note that this will usually get a single character per call.
     """
-    sys.stdout.write(text)
+    bytestring = text.decode('ASCII')
+    sys.stdout.write(bytestring)
     sys.stdout.flush()
 
 def main_sep_terminal_telnet():
@@ -1122,8 +1137,9 @@ def main_sep_terminal_telnet():
 
     try:
         session = XTelnet(options.address, options.port)
-    except:
+    except Exception as e:
         print('telnetlib error: could not connect to ', options.address, ' ', options.port)
+        print('... Reason:', e)
     else:
         #session.set_debuglevel(10)
         # Establish keyboard input and screen output functions.
@@ -1152,7 +1168,7 @@ def main_sep_terminal_telnet():
 def get_application_file_name( appname, filename, exttest=None ):
     """
     Return filename prefixed with a directory path appropriate to the OS.
-    If the expected filedoes not exist, return prefixed by the current directory.
+    If the expected file does not exist, return filename prefixed by the directory the script is running from.
     """
     if sys.platform.startswith('darwin'):
         appdir = '/Applications/{0}.app/Contents/MacOS'.format(appname)
@@ -1164,7 +1180,7 @@ def get_application_file_name( appname, filename, exttest=None ):
     else:
         testloc = loc
     if not os.path.isfile(testloc):
-        return os.path.join('./',filename)
+        return os.path.join(os.path.dirname(__file__),filename)
     else:
         return loc
 
@@ -1174,6 +1190,21 @@ def get_application_file_name( appname, filename, exttest=None ):
 #   Glass teletype using   #
 # PyQt 5 and QOpenGLWidget #
 ############################
+
+class doUpdate_signal_class(QObject):
+    """
+    Create an object derived from QObject containing just a signal object for using signal/slot
+    mechanism for potential inter-thread calling of doUpdate() (which must run on the main thread).
+    Apparently, this palaver is considered to be an improvement on the previous "syntax" for this.
+    I beg to differ.
+    """
+    signal = Signal(int)
+
+class doGrUpdate_signal_class(QObject):
+    """
+    As above, but for doGrUpdate() calls.
+    """
+    signal = Signal(int)
 
 class GTermWidget(QOpenGLWidget):
     """
@@ -1296,7 +1327,76 @@ class GTermWidget(QOpenGLWidget):
         self.cursor_char_offset = 0
         # Horizontal guide positions.
         self.h_guide_positions = []
+        # Signal declarations so that QOpenGLWidget update() -- which must run on the main thread --
+        # can be indirectly "called" from code on the thread reading data from the remote host.
+        self.doUpdate_signal_object = doUpdate_signal_class()
+        self.doGrUpdate_signal_object = doGrUpdate_signal_class()
+        # Text cut/paste.
+        try:
+            clipman.init()
+        except clipman.exceptions.ClipmanBaseException as e:
+            print('Failed to intialize Clipman clipboard interface.')
+            print('... Reason:', e)
+        self.x1_text = -1
+        self.y1_text = -1
+        self.x2_text = -1
+        self.y2_text = -1
+        self.paste_buffer = ''
 
+    def screenlockacquire(self):
+        """
+        Acquire the screen data buffer lock.
+        """
+        #print('sa') #('screenlock_acquire')
+        self.screenlock.acquire()
+        global global_s_lock
+        global_s_lock += 1
+
+    def screenlockrelease(self):
+        """
+        Release the screen data buffer lock.
+        """
+        #print('sr') #('screenlock_release')
+        global global_s_lock
+        global_s_lock -= 1
+        self.screenlock.release()
+        
+    def gcblockacquire(self):
+        """
+        Acquire the graphics command buffer lock.
+        """
+        #print('ga') #('gcblock_acquire')
+        self.gcblock.acquire()
+        global global_g_lock
+        global_g_lock += 1
+
+    def gcblockrelease(self):
+        """
+        Release the graphics command buffer lock.
+        """
+        #print('gr') #('gcblock_release')
+        global global_g_lock
+        global_g_lock -= 1
+        self.gcblock.release()
+
+    def trigger_doUpdate(self, position):
+        """
+        Cause doUpdate() to be called via the Qt signal/slot mechanism.
+        This function may be called from any thread, but doUpdate() will run in the main thread.
+        """
+        if self.debuglevel > 1:
+            print('Calling doUpdate() from thread:', threading.get_ident())
+        self.doUpdate_signal_object.signal.emit(position)
+        
+    def trigger_doGrUpdate(self, position):
+        """
+        Cause doGrUpdate() to be called via the Qt signal/slot mechanism.
+        This function may be called from any thread, but doGrUpdate() will run in the main thread.
+        """
+        if self.debuglevel > 1:
+            print('Calling doGrUpdate() from thread:', threading.get_ident())
+        self.doGrUpdate_signal_object.signal.emit(position)
+                
     def loadCharData(self,jsonfile):
         """
         Load the locations of each character in the character texture from
@@ -1324,8 +1424,9 @@ class GTermWidget(QOpenGLWidget):
             self.cellduv = metricdict['cellduv']
             self.dsu = self.cellduv[0]
             self.dsv = self.cellduv[1]
-        except:
+        except Exception as e:
             print('**** Failed to open or parse font data file! Giving up!')
+            print('... Reason:', e)
             sys.exit(1)
 
     def loadCharImage(self,pngfile):
@@ -1335,8 +1436,9 @@ class GTermWidget(QOpenGLWidget):
         try:
             img = Image.open(pngfile)
             self.imgl = img.convert('L')
-        except:
+        except Excpetion as e:
             print('**** Failed to open font texture image file! Giving up!')
+            print('... Reason:', e)
             sys.exit(1)
 
     def loadCharDefinitions(self,charsetname):
@@ -1372,9 +1474,10 @@ class GTermWidget(QOpenGLWidget):
             self.vkb_have = True
             if self.debuglevel > 1:
                 print(self.vkb_keymap)
-        except:
+        except Exception as e:
             self.vkb_have = False
             print('**** Failed to read virtual keyboard definition file. Giving up!')
+            print(' Reason:', e)
             sys.exit(1)
         if self.debuglevel > 1:
             print(self.vkb_keymap)
@@ -1386,8 +1489,9 @@ class GTermWidget(QOpenGLWidget):
         try:
             img = Image.open(pngfile)
             self.vkb_img = img.convert('L')
-        except:
+        except Exception as e:
             print('**** Failed to open virtual keyboard image file! Giving up!')
+            print('... Reason:', e)
             sys.exit(1)
 
     def loadVkbDefinitions(self,vkbname):
@@ -1415,8 +1519,9 @@ class GTermWidget(QOpenGLWidget):
                     self.unicode_map[ikey] = bytes(input_dir[k],encoding='utf-8').decode('unicode-escape')
                 except:
                     pass
-        except:
+        except Exception as e:
             print('**** Failed to open or parse Unicode map data file! Giving up!')
+            print('... Reason:', e)
             sys.exit(1)
 
     def getBackgroundColour(self):
@@ -1463,6 +1568,21 @@ class GTermWidget(QOpenGLWidget):
             return (0.0,0.0,0.0,1.0)
         else:
             return (1.0,1.0,1.0,1.0)
+
+    def getTextSelectColour(self):
+        """
+        Return the text selection rectangle colour.
+        """
+        if self.havefocus:
+            if self.haveconnection:
+                return (0.494,0.102,0.0157,1.0)
+            else:
+                return (0.1,0.1,0.8,1.0)
+        else:
+            if self.haveconnection:
+                return (0.3,0.05,0.05,1.0)
+            else:
+                return (0.05,0.05,0.3,1.0)
 
     def getCursorColour(self):
         """
@@ -1562,6 +1682,7 @@ class GTermWidget(QOpenGLWidget):
         """
         Draw all the characters on the screen, or interpret and draw the
         contents of the graphics command buffer.
+        CALLED AS A RESULT OF CALLING update().
         """
         # Graphics drawing.
         if self.drawgraf:
@@ -1627,16 +1748,21 @@ class GTermWidget(QOpenGLWidget):
                 back_col = self.getBackgroundColour()
                 glClearColor(back_col[0], back_col[1], back_col[2], back_col[3])
                 glClear(GL_COLOR_BUFFER_BIT)
-                # Draw horizontal guides (if any).
-                for guidex in self.h_guide_positions:
-                    xg = self.xmargin + guidex * self.charspace
-                    glColor4f(0.0,0.5,0.0,1.0)
-                    glLineWidth(2)
-                    glBegin(GL_LINES)
-                    glVertex2f(xg,0.0)
-                    glVertex2f(xg,self.viewport[1])
-                    glEnd()
-                    glLineWidth(1)
+            # Draw any text selection rectangle.
+            if self.x1_text >= 0:
+                back_col = self.getTextSelectColour()
+                glColor4f(back_col[0], back_col[1], back_col[2], back_col[3])
+                glRectf(self.x1_text,self.y1_text,self.x2_text,self.y2_text)
+            # Draw horizontal guides (if any).
+            for guidex in self.h_guide_positions:
+                xg = self.xmargin + guidex * self.charspace
+                glColor4f(0.0,0.5,0.0,1.0)
+                glLineWidth(2)
+                glBegin(GL_LINES)
+                glVertex2f(xg,0.0)
+                glVertex2f(xg,self.viewport[1])
+                glEnd()
+                glLineWidth(1)
             # Draw the characters blended over the background colour.
             fore_col = self.getForegroundColour()
             glColor4f(fore_col[0],fore_col[1],fore_col[2],fore_col[3])
@@ -1644,7 +1770,8 @@ class GTermWidget(QOpenGLWidget):
             glEnable(GL_TEXTURE_2D)
             glEnable(GL_BLEND)
             # Draw the previous screen lines.
-            self.screenlock.acquire()
+            #********************************************************
+            self.screenlockacquire()
             lines = len(self.screen)
             firstvisible = lines - self.visiblelines - self.scroll
             if firstvisible < 0:
@@ -1669,7 +1796,8 @@ class GTermWidget(QOpenGLWidget):
                     xpos += self.charspace
             else:
                 self.draw_tip( (xpos,ypos),"... scrolled {0} ...".format(self.scroll), True)
-            self.screenlock.release()
+            self.screenlockrelease()
+            #********************************************************
             # Turn off blending and texturing.
             glDisable(GL_BLEND)
             glDisable(GL_TEXTURE_2D)
@@ -1792,7 +1920,8 @@ class GTermWidget(QOpenGLWidget):
         """
         if self.debuglevel > 1:
             print('DoNewLine')
-        self.screenlock.acquire()
+        #********************************************************
+        self.screenlockacquire()
         # Pop off lines that have gone off the top of the page.
         self.screen.append(self.line)
         if len(self.screen) > (self.maxlines-1):
@@ -1813,10 +1942,11 @@ class GTermWidget(QOpenGLWidget):
         #self.prevlen = 0
         #self.tabpos = 0
         self.newlinesin += 1 # Count total newlines for paper mode.
-        self.screenlock.release()
+        self.screenlockrelease()
+        #********************************************************
         if self.debuglevel > 1:
             print('-- --> prevlen',self.prevlen)
-        self.doUpdate(2)
+        self.trigger_doUpdate(2)
 
     def screenDoReturnCarriage(self):
         """
@@ -1836,11 +1966,13 @@ class GTermWidget(QOpenGLWidget):
         if self.debuglevel > 1:
             print('ClearLine')
         self.screenDoReturnCarriage()
-        self.screenlock.acquire()
+        #********************************************************
+        self.screenlockacquire()
         self.line = []
-        self.screenlock.release()
+        self.screenlockrelease()
+        #********************************************************
         if doupdate:
-            self.doUpdate(27)
+            self.trigger_doUpdate(27)
 
     def screenDoBackspace(self):
         """
@@ -1848,17 +1980,19 @@ class GTermWidget(QOpenGLWidget):
         """
         if self.debuglevel > 1:
             print('DoBackspace')
-        self.screenlock.acquire()
+        #********************************************************
+        self.screenlockacquire()
         if( len(self.line) > 0 ):
             self.line.pop()
         self.prevlen -= 1
         if self.prevlen < 0:
             self.prevlen = 0
         self.changed = 2
-        self.screenlock.release()
+        self.screenlockrelease()
+        #********************************************************
         if self.debuglevel > 2:
             print('--> prevlen',self.prevlen)
-        self.doUpdate(3)
+        self.trigger_doUpdate(3)
 
     def screenDoTab(self):
         """
@@ -1866,13 +2000,15 @@ class GTermWidget(QOpenGLWidget):
         """
         if self.debuglevel > 1:
             print('DoTab')
-        self.screenlock.acquire()
+        #********************************************************
+        self.screenlockacquire()
         nextpos = (int(self.prevlen/self.tabstop)+1) * self.tabstop
         numspaces = nextpos - self.prevlen
         for ispace in range(0,numspaces):
             self.line.append(32)
-        self.screenlock.release()
-        self.doUpdate(9)
+        self.screenlockrelease()
+        #********************************************************
+        self.trigger_doUpdate(9)
 
     def screenDoFormFeed(self):
         """
@@ -1882,12 +2018,14 @@ class GTermWidget(QOpenGLWidget):
             print('DoFormFeed')
         if self.ffclears:
             # Clear the screen on FF mode.
-            self.screenlock.acquire()
+            #********************************************************
+            self.screenlockacquire()
             self.line = []
             self.screen = []
             self.changed = 2
-            self.screenlock.release()
-            self.doUpdate(15)
+            self.screenlockrelease()
+            #********************************************************
+            self.trigger_doUpdate(15)
         else:
             # Output a printed page break string mode.
             ffstring = '-----<FF>---------------------------------------------------------'
@@ -1901,8 +2039,12 @@ class GTermWidget(QOpenGLWidget):
         """
         Make sure the screen is redrawn.
         """
+        #********************************************************
+        self.screenlockacquire()
         self.changed += 1
-        self.doUpdate(27)
+        self.screenlockrelease()
+        #********************************************************
+        self.trigger_doUpdate(27)
 
     def screenDoBell(self):
         """
@@ -1930,16 +2072,18 @@ class GTermWidget(QOpenGLWidget):
             self.line = []
         # Conditionally add the character.
         if is_printable or self.shownonprint:
-            self.screenlock.acquire()
+            #********************************************************
+            self.screenlockacquire()
             self.line.append(charnum)
             self.changed = 2
             self.prevlen += 1
-            self.screenlock.release()
+            self.screenlockrelease()
+            #********************************************************
             if self.debuglevel > 2:
                 print('--> prevlen',self.prevlen)
         # Conditionally update the display.
         if do_update:
-            self.doUpdate(4)
+            self.trigger_doUpdate(4)
 
     def screenAddString(self,string,newlinechar=10,retchar=13):
         """
@@ -2040,7 +2184,9 @@ class GTermWidget(QOpenGLWidget):
         """
         if self.inescape or self.escapeProcessFuncList == []:
             if self.debuglevel > 2:
-                print('*** checkEscapeStart({0}): inescape={1}, len(escapeProcessFuncList)={2}'.format(testchar,self.inescape,len(self.escapeProcessFuncList)))
+                print('*** checkEscapeStart({0}): inescape={1}, len(escapeProcessFuncList)={2}'.format(testchar,
+                                                                                                       self.inescape,
+                                                                                                       len(self.escapeProcessFuncList)))
             return
         for fd in self.escapeProcessFuncList:
             (ec,epf) = fd
@@ -2061,20 +2207,21 @@ class GTermWidget(QOpenGLWidget):
 
     def doUpdate(self,location):
         """
-        Re-paint the screen. This is always called indirectly
-        via a custom SIGNAL to try to have all OpenGL rendering done
-        on the main thread even if characters are being added from a
-        separate thread - which is necessary for most comms applications.
+        Re-paint the screen.
         """
         # If the screen data has actually changed, repaint. Otherwise, do nothing.
         # Many unnecessary repaint events may be queued, so this greatly improves performance.
         # However, there is a nasty kludge which seems to be required to make this work
         # reliably ... repaint one more time than seems to be strictly necessary!
+        if self.debuglevel > 1:
+            print('Running doUpdate() in thread:', threading.get_ident())
         if self.changed > 0:
             self.update()
-            self.screenlock.acquire()
+            #********************************************************
+            self.screenlockacquire()
             self.changed -= 1
-            self.screenlock.release()
+            self.screenlockrelease()
+            #********************************************************
         if self.debuglevel > 1:
             print('Update. From:',location,' Changed:',self.changed)
 
@@ -2174,19 +2321,23 @@ class GTermWidget(QOpenGLWidget):
         Clear the screen.
         """
         if self.drawgraf:
-            self.gcblock.acquire()
+            #********************************************************
+            self.gcblockacquire()
             self.gcbcmds = 0
             self.gcb = []
             self.gchanged = 2
-            self.gcblock.release()
-            self.doGrUpdate(2)
+            self.gcblockrelease()
+            #********************************************************
+            self.trigger_doGrUpdate(2)
         else:
-            self.screenlock.acquire()
+            #********************************************************
+            self.screenlockacquire()
             self.line = []
             self.screen = []
             self.changed = 2
-            self.screenlock.release()
-            self.doUpdate(5)
+            self.screenlockrelease()
+            #********************************************************
+            self.trigger_doUpdate(5)
 
     def printableChar(self,char):
         """
@@ -2201,11 +2352,12 @@ class GTermWidget(QOpenGLWidget):
         if self.debuglevel > 1:
             print('@@@ got focus')
         self.havefocus = True
-        self.screenlock.acquire()
+        #********************************************************
+        self.screenlockacquire()
         self.changed = 2
-        self.screenlock.release()
-        self.doUpdate(6)
-
+        self.screenlockrelease()
+        #********************************************************
+        self.trigger_doUpdate(6)
 
     def focusOutEvent(self,event):
         """
@@ -2214,10 +2366,12 @@ class GTermWidget(QOpenGLWidget):
         if self.debuglevel > 1:
             print('@@@ lost focus')
         self.havefocus = False
-        self.screenlock.acquire()
+        #********************************************************
+        self.screenlockacquire()
         self.changed = 2
-        self.screenlock.release()
-        self.doUpdate(7)
+        self.screenlockrelease()
+        #********************************************************
+        self.trigger_doUpdate(7)
 
     def backspaceSendsDelete(self,yes):
         """
@@ -2273,15 +2427,55 @@ class GTermWidget(QOpenGLWidget):
         else:
             return(-1,-1)
 
+    def screen_pos_to_buffer_indices(self, x, y):
+        """
+        Convert a screen position to text screen data buffer indices.
+        """
+        iline = (y - self.ymargin) // self.linespace
+        ichar = (x - self.xmargin) // self.charspace
+        iline = len(self.screen) - (iline + self.scroll)
+        return (int(ichar), int(iline))
+
+    def read_screen_buffer(self, start_idx, end_idx):
+        """
+        Return a string from the screen buffer.
+        """
+        schar = start_idx[0]
+        echar = end_idx[0]
+        if echar < schar:
+            temp = schar
+            schar = echar
+            echar = temp
+        sline = start_idx[1]
+        eline = end_idx[1]
+        schar = max(0, schar)
+        if eline < sline:
+            temp = sline
+            sline = eline
+            eline = temp
+        sline = max(sline, 0)
+        eline = min(eline, len(self.screen))
+
+        result = ''
+        for iline in range(sline, eline):
+            cline = self.screen[iline]
+            fchar = min(echar, len(cline)-1)
+            for ichar in range(schar, fchar+1):
+                ich = cline[ichar]
+                if (ich >= 32) and (ich < 127):
+                    result += chr(ich)
+            result += '\n'
+        return result
+
     def mousePressEvent(self,mouseEvent):
         """
         Mouse button press handler.
         """
         if self.debuglevel > 0:
-            print('Mouse press. Pos=({0},{1})'.format(mouseEvent.x(),mouseEvent.y()))
+            print('Mouse press. Pos=({0},{1})'.format(mouseEvent.position().x(),mouseEvent.position().y()))
         # Virtual keyboard events?
         if self.vkb_have and self.vkb_show and not self.drawgraf:
-            self.vkb_down_keynum = self.vkb_screen_pos_to_key(mouseEvent.x(),mouseEvent.y())
+            self.vkb_down_keynum = self.vkb_screen_pos_to_key(mouseEvent.position().x(),mouseEvent.position().y())
             if self.debuglevel > 0:
                 if self.vkb_down_keynum < 0:
                     print("Off keyboard")
@@ -2295,22 +2489,30 @@ class GTermWidget(QOpenGLWidget):
         # Graphics zoom box starts? Yes, if not already zoomed.
         if self.drawgraf and (not self.zoomed):
             xdiv = self.height_pixels if self.make_square else self.width_pixels
-            self.zoom_xlo = float(mouseEvent.x()) / xdiv
-            self.zoom_ylo = float(self.height_pixels-mouseEvent.y()) / self.height_pixels
+            self.zoom_xlo = float(mouseEvent.position().x()) / xdiv
+            self.zoom_ylo = float(self.height_pixels-mouseEvent.position().y()) / self.height_pixels
             self.zoom_box = True
+        # Start text selection in text case.
+        if not self.drawgraf:
+            self.x1_text = self.x2_text = \
+                int((mouseEvent.position().x() - self.xmargin) / self.charspace) * \
+                self.charspace + self.xmargin
+            self.y1_text = self.y2_text = \
+                int(((self.height_pixels - mouseEvent.position().y()) - self.ymargin) / self.linespace) * \
+                self.linespace + self.ymargin
 
     def mouseReleaseEvent(self,mouseEvent):
         """
         Mouse button release handler.
         """
         if self.debuglevel > 0:
-            print('Mouse release. Pos=({0},{1})'.format(mouseEvent.x(),mouseEvent.y()))
+            print('Mouse release. Pos=({0},{1})'.format(mouseEvent.position().x(),mouseEvent.position().y()))
         self.vkb_down_keynum = -1
         # Graphics zoom box? If so and not zoomed, set zoom parameters and go to zoomed.
         if self.drawgraf and self.zoom_box and (not self.zoomed):
             xdiv = self.height_pixels if self.make_square else self.width_pixels
-            self.zoom_xhi = float(mouseEvent.x()) / xdiv
-            self.zoom_yhi = float(self.height_pixels-mouseEvent.y()) / self.height_pixels
+            self.zoom_xhi = float(mouseEvent.position().x()) / xdiv
+            self.zoom_yhi = float(self.height_pixels-mouseEvent.position().y()) / self.height_pixels
             sxlo = min(self.zoom_xlo,self.zoom_xhi)
             sylo = min(self.zoom_ylo,self.zoom_yhi)
             sxhi = max(self.zoom_xlo,self.zoom_xhi)
@@ -2325,6 +2527,13 @@ class GTermWidget(QOpenGLWidget):
                 self.xhi = sxc + ds
                 self.yhi = syc + ds
                 self.zoomed = True
+        # End text selection and copy to clip board if text.
+        if not self.drawgraf:
+            xc1, yc1 = self.screen_pos_to_buffer_indices(self.x1_text, self.y1_text)
+            xc2, yc2 = self.screen_pos_to_buffer_indices(self.x2_text, self.y2_text)
+            self.paste_buffer = self.read_screen_buffer((xc1,yc1), (xc2,yc2))
+            self.copy_to_clipboard()
+            self.x1_text = self.y1_text = self.x2_text = self.y2_text = -1
         self.update()
 
     def mouseDoubleClickEvent(self,mouseEvent):
@@ -2347,20 +2556,27 @@ class GTermWidget(QOpenGLWidget):
         """
         Mouse movement handler.
         """
-        mousebuttons = int(mouseEvent.buttons())
+        mousebuttons = mouseEvent.buttons()  # Qt6 change.
         if mousebuttons != Qt.NoButton:
-            delta_x = mouseEvent.x() - self.oldmouse_x
-            delta_y = self.oldmouse_y - mouseEvent.y()
+            delta_x = mouseEvent.position().x() - self.oldmouse_x
+            delta_y = self.oldmouse_y - mouseEvent.position().y()
             if self.debuglevel > 0:
                 print('Mouse drag. Delta=({0},{1})'.format(delta_x,delta_y))
             # Update zoom box if we are setting one.
             if self.drawgraf and self.zoom_box and (not self.zoomed):
                 xdiv = self.height_pixels if self.make_square else self.width_pixels
-                self.zoom_xhi = float(mouseEvent.x()) / xdiv
-                self.zoom_yhi = float(self.height_pixels-mouseEvent.y()) / self.height_pixels
+                self.zoom_xhi = float(mouseEvent.position().x()) / xdiv
+                self.zoom_yhi = float(self.height_pixels-mouseEvent.position().y()) / self.height_pixels
                 self.update()
-        self.oldmouse_x = mouseEvent.x()
-        self.oldmouse_y = mouseEvent.y()
+            # Update text select box.
+            if not self.drawgraf:
+                self.x2_text = int((mouseEvent.position().x() - self.xmargin) / self.charspace) * \
+                    self.charspace + self.xmargin
+                self.y2_text = int(((self.height_pixels - mouseEvent.position().y()) - self.ymargin) / self.linespace) * \
+                    self.linespace + self.ymargin
+                self.update()
+        self.oldmouse_x = mouseEvent.position().x()
+        self.oldmouse_y = mouseEvent.position().y()
 
     def wheelEvent(self,wheelEvent):
         """
@@ -2373,6 +2589,29 @@ class GTermWidget(QOpenGLWidget):
         else:
             self.scroll -= 1
         self.setScroll(self.scroll)
+
+    def copy_to_clipboard(self):
+        """
+        Copy any paste buffer contents to clipboard.
+        """
+        if len(self.paste_buffer) > 0:
+            try:
+                clipman.set(self.paste_buffer)
+            except clipman.exceptions.ClipmanBaseException as e:
+                print('Clipman set clipboard error:', e)
+
+    def paste_from_clipboard(self):
+        """
+        Paste one line of any clipboard contents to current line.
+        """
+        try:
+            text = clipman.get()
+            firstline = (''.join(text.split('\n')[0])).strip()
+            for c in firstline:
+                if self.printableChar(c):
+                    self.send_char(ord(c))
+        except clipman.exceptions.ClipmanBaseException as e:
+            print('Clipman get clipboard error:', e)
 
     def openLogFile(self,logfilename):
         """
@@ -2393,8 +2632,9 @@ class GTermWidget(QOpenGLWidget):
                 self.flog.write(ccodeunic)
             self.flog.write('\n')
             self.flog.flush()
-        except:
+        except Exception as e:
             print('writeLogFile() failed. Python 3 Unicode problem.')
+            print('... Reason:', e)
 
     def closeLogFile(self):
         """
@@ -2455,7 +2695,8 @@ class GTermWidget(QOpenGLWidget):
             print("GRAPHICS:",commandlist)
 
         # Acquire display list lock.
-        self.gcblock.acquire()
+        #********************************************************
+        self.gcblockacquire()
         isaflush = False
         
         # Trap errors to prevent aborts with experimental drivers.
@@ -2633,18 +2874,20 @@ class GTermWidget(QOpenGLWidget):
                 self.gcbcmds += 1;
 
             # Release the display list lock.
-            self.gcblock.release()
-            
+            self.gcblockrelease()
+            #********************************************************
+
             # If we have received a lot of commands, or a flush command, update the screen.
             if isaflush or ( ( ( (self.gcbcmds+1) % 1000 ) ) == 0 ):
                 self.gchanged = 2
-                self.doGrUpdate(1)
+                self.trigger_doGrUpdate(1)
 
         # If there was an exception, try to say what happened.
         except Exception as e:
             print('add_graphics(): Exception, command code:',command)
             print(e)
-            self.gcblock.release()
+            self.gcblockrelease()
+            #******************************************************** ???
 
     def viewGraphics(self):
         """
@@ -2669,18 +2912,19 @@ class GTermWidget(QOpenGLWidget):
 
     def doGrUpdate(self,location):
         """
-        Re-paint the graphics screen. This is always called indirectly
-        via a custom SIGNAL to try to have all OpenGL rendering done
-        on the main thread even if characters are being added from a
-        separate thread - which is necessary for most comms applications.
+        Re-paint the graphics screen.
         """
         # If the graphics screen data has actually changed, repaint. Otherwise, do nothing.
         # Logic identical to doUpdate.
+        if self.debuglevel > 1:
+            print('Running doGrUpdate() in thread:', threading.get_ident())
         if self.gchanged > 0:
             self.update()
-            self.gcblock.acquire()
+            #********************************************************
+            self.gcblockacquire()
             self.gchanged -= 1
-            self.gcblock.release()
+            self.gcblockrelease()
+            #********************************************************
         if self.debuglevel > 1:
             print('GrUpdate. From:',location,' Changed:',self.gchanged)
 
@@ -2696,6 +2940,54 @@ class GTermWidget(QOpenGLWidget):
             print('cairoSetLineWidth(), w =',w,' dw =',dw)
         c.set_line_width(dw)
 
+    def tick_step(self, data_range, max_ticks):
+        step_table = [10, 5, 2, 1]
+        minimum_step = float(data_range) / max_ticks
+        magnitude = 10 ** math.floor( math.log( minimum_step, 10 ) + 1e-9 )
+        residual = minimum_step / magnitude
+        tick_size = magnitude
+        for i in range(1,len(step_table)):
+            if residual > step_table[i]:
+                return step_table[i-1] * magnitude
+        return magnitude
+
+    def tick_values(self, data_min, data_max, max_ticks):
+        if( abs(data_min - data_max)  < 1e-9 ):
+            return []
+        else:
+            if data_min > data_max:
+                t = data_min
+                data_min = data_max
+                data_max = t
+            data_range = data_max - data_min
+            step = tick_step( data_range, max_ticks )
+            istep_min = int(math.floor( data_min / step ))
+            istep_max = int(math.ceil( data_max / step )) + 1
+            values = []
+            for i in range(istep_min, istep_max):
+                values.append( i * step )
+            return values
+
+    def tick_labels(self, tick_vals):
+        def trail_0_suppress( valstr ):
+            if valstr[-1] == '0':
+                return valstr[:-1]
+            else:
+                return valstr
+        #
+        maxvalue = max( abs( tick_vals[0] ), abs( tick_vals[-1] ) )
+        magnitude = 10 ** math.floor( math.log( maxvalue, 10 ) + 1e-9 )
+        labels = []
+        scale_label = ''
+        if( magnitude < 0.1 or magnitude > 10.0 ):
+            scale_label = 'x 10^'+str( int( math.floor( math.log( magnitude, 10 ) + 1e-9 ) ) )
+            for tick_val in tick_vals:
+                labels.append( trail_0_suppress('{0:.2f}'.format( tick_val / magnitude )) )
+        else:
+            for tick_val in tick_vals:
+                labels.append( trail_0_suppress('{0:.2f}'.format( tick_val )) )
+        return (labels, scale_label)
+
     def cairoRenderGraphics(self,c,to_x_pixels,to_y_pixels):
         """
         Render the graphics command buffer contents to Cairo context c.
@@ -2704,7 +2996,8 @@ class GTermWidget(QOpenGLWidget):
         fontnames = ['Times New Roman','Arial','Courier']
         
         # Acquire the display list lock.
-        self.gcblock.acquire()
+        #********************************************************
+        self.gcblockacquire()
         inaline = False
         
         # Record MOVE commands, but do not actually move until the first
@@ -2800,10 +3093,10 @@ class GTermWidget(QOpenGLWidget):
                 if make_square:
                     xmid = 0.5 * ( cmd[1] + cmd[3] )
                     xdelta = 0.5 * ((float(to_x_pixels) / float(to_y_pixels)) * (cmd[4] - cmd[2]))
-                    graph_tick_values_x = grid.tick_values( xmid-xdelta, xmid+xdelta, 15 )
+                    graph_tick_values_x = self.tick_values( xmid-xdelta, xmid+xdelta, 15 )
                 else:
-                    graph_tick_values_x = grid.tick_values( cmd[1], cmd[3], 15 )
-                graph_tick_values_y = grid.tick_values( cmd[2], cmd[4], 10 )
+                    graph_tick_values_x = self.tick_values( cmd[1], cmd[3], 15 )
+                graph_tick_values_y = self.tick_values( cmd[2], cmd[4], 10 )
                 # Set the drawing bounds to the smallest and largest tick values on each axis.
                 xlo = graph_tick_values_x[0]
                 xhi = graph_tick_values_x[-1]
@@ -2821,9 +3114,9 @@ class GTermWidget(QOpenGLWidget):
                     y_scale = to_y_pixels / max(1e-6, yhi - ylo)
                 # Now draw the graph paper ...
                 # First, make label strings for the tick values (already set).
-                x_labels,x_scale_string = grid.tick_labels( graph_tick_values_x )
+                x_labels,x_scale_string = self.tick_labels( graph_tick_values_x )
                 n_x_labels = len(x_labels)
-                y_labels,y_scale_string = grid.tick_labels( graph_tick_values_y )
+                y_labels,y_scale_string = self.tick_labels( graph_tick_values_y )
                 n_y_labels = len(y_labels)
                 # Set drawing state for the graph paper.
                 c.set_font_size(14)
@@ -2925,7 +3218,8 @@ class GTermWidget(QOpenGLWidget):
             c.stroke()
 
         # Release the display list lock.
-        self.gcblock.release()
+        self.gcblockrelease()
+        #********************************************************
 
     def saveGraphics(self,filename):
         """
@@ -3192,7 +3486,7 @@ class GTermTelnetWidget(GTermWidget):
                 if( len(self.history_line) > 0 ):
                     self.history_line.pop()
             else:
-                # Editing a history line. Deal with this is keyboardGetChar().
+                # Editing a history line. Deal with this in keyboardGotChar().
                 send_to_host = False
                 self.keyboardGotChar(8,False,False,False,False)
         # In any case, send backspace to host unless editing a history line.
@@ -3334,9 +3628,21 @@ class GTermTelnetWidget(GTermWidget):
         """
         if self.debuglevel > 2:
             print('event() event =',event)
-        altkeymap = {Qt.Key_G:1,Qt.Key_T:2,Qt.Key_K:3,Qt.Key_U:4,Qt.Key_D:5,Qt.Key_H:6,
-                     Qt.Key_PageUp:4,Qt.Key_PageDown:5,Qt.Key_Home:6,Qt.Key_A:7,Qt.Key_S:8}
-        spckeymap = {Qt.Key_PageUp:4,Qt.Key_PageDown:5,Qt.Key_Home:6}
+        altkeymap = {Qt.Key_G:1,
+                     Qt.Key_T:2,
+                     Qt.Key_K:3,
+                     Qt.Key_U:4,
+                     Qt.Key_D:5,
+                     Qt.Key_H:6,
+                     Qt.Key_PageUp:4,
+                     Qt.Key_PageDown:5,
+                     Qt.Key_Home:6,
+                     Qt.Key_A:7,
+                     Qt.Key_S:8,
+                     Qt.Key_V:9}
+        spckeymap = {Qt.Key_PageUp:4,
+                     Qt.Key_PageDown:5,
+                     Qt.Key_Home:6}
         if event.type() == QEvent.KeyPress:
             key = event.key()
             if key == Qt.Key_Tab:
@@ -3349,16 +3655,18 @@ class GTermTelnetWidget(GTermWidget):
                 if self.userwidget is not None:
                     try:
                         self.userwidget.alt_key_handler(spckeymap[key])
-                    except:
-                        print('Failed to call userwidget.alt_key_handler()')
+                    except Exception as e:
+                        print('Failed to call userwidget.alt_key_handler() (spckeymap)')
+                        print('... Reason:', e)
                 return True
             if self.alt:
                 if key in altkeymap:
                     if self.userwidget is not None:
                         try:
                             self.userwidget.alt_key_handler(altkeymap[key])
-                        except:
-                            print('Failed to call userwidget.alt_key_handler()')
+                        except Exception as e:
+                            print('Failed to call userwidget.alt_key_handler() (altkeymap)')
+                            print('... Reason:', e)
                     return True
         return GTermWidget.event(self,event)
 
@@ -3368,6 +3676,26 @@ class GTermTelnetWidget(GTermWidget):
 #  For a "bell"!  #
 ###################
 
+# Unfortunately, on Linux (where sound support has always been a big mess and
+# probably always will be), creating a PyAudio object and opening it works
+# correctly, but insists on outputting tons of "error messages". What exactly
+# -- and even if this happens at all -- depends on which of the many Linux
+# sound subsystems are in use on the machine and umpteen incomprehensible
+# configuration files. Instead of trying to "fix this" (and there won't be a solution
+# that works for everyone), just try to silence the messages using a context manager.
+@contextlib.contextmanager
+def ignoreStderr():
+    devnull = os.open(os.devnull, os.O_WRONLY)
+    old_stderr = os.dup(2)
+    sys.stderr.flush()
+    os.dup2(devnull, 2)
+    os.close(devnull)
+    try:
+        yield
+    finally:
+        os.dup2(old_stderr, 2)
+        os.close(old_stderr)
+        
 class AudioFile:
     """
     Play a WAV format audio file with PyAudio.
@@ -3378,13 +3706,14 @@ class AudioFile:
         Init audio stream
         """ 
         self.wf = wave.open(file, 'rb')
-        self.p = pyaudio.PyAudio()
-        self.stream = self.p.open(
-            format = self.p.get_format_from_width(self.wf.getsampwidth()),
-            channels = self.wf.getnchannels(),
-            rate = self.wf.getframerate(),
-            output = True
-        )
+        with ignoreStderr():
+            self.p = pyaudio.PyAudio()
+            self.stream = self.p.open(
+                format = self.p.get_format_from_width(self.wf.getsampwidth()),
+                channels = self.wf.getnchannels(),
+                rate = self.wf.getframerate(),
+                output = True
+            )
 
     def play(self):
         """
@@ -3415,684 +3744,694 @@ def make_noise(wavfile):
 
 #################################
 # MAIN PROGRAM                  #
-# PySide2 GUI terminal program. #
+# PySide6 GUI terminal program. #
 #################################
 
-if __name__ == '__main__':
-
-    def dumpChar(c,simple=False):
-        """
-        Make a printable representation of character c.
-        """
-        cch=["NUL","SOH","STX","ETX","EOT","ENQ","ACK","BEL",
-             " BS"," HT"," LF"," VT"," FF"," CR"," SO"," SI",
-             "DLE","DC1","DC2","DC3","DC4","NAK","SYN","ETB",
-             "CAN"," EM","SUB","ESC"," FS"," GS"," RS"," US"]
-        out = ''
-        if type(c) == int:
-            oc = c
+def dumpChar(c,simple=False):
+    """
+    Make a printable representation of character c.
+    """
+    cch=["NUL","SOH","STX","ETX","EOT","ENQ","ACK","BEL",
+         " BS"," HT"," LF"," VT"," FF"," CR"," SO"," SI",
+         "DLE","DC1","DC2","DC3","DC4","NAK","SYN","ETB",
+         "CAN"," EM","SUB","ESC"," FS"," GS"," RS"," US"]
+    out = ''
+    if type(c) == int:
+        oc = c
+    else:
+        oc = ord(c)
+    if oc > 31 and oc < 127:
+        if simple:
+            out += c
         else:
-            oc = ord(c)
-        if oc > 31 and oc < 127:
-            if simple:
-                out += c
-            else:
-                out += '{0:02x} ({1})'.format(oc,c)
+            out += '{0:02x} ({1})'.format(oc,c)
+    else:
+        if oc < 127:
+            out += '{0:02x} {1}'.format(oc,cch[oc])
+        elif oc > 127:
+            out += '{0:02x} HIB'.format(oc)
         else:
-            if oc < 127:
-                out += '{0:02x} {1}'.format(oc,cch[oc])
-            elif oc > 127:
-                out += '{0:02x} HIB'.format(oc)
-            else:
-                out += '{0:02x} DEL'.format(oc)
-        return out
+            out += '{0:02x} DEL'.format(oc)
+    return out
 
-    def dumpData(string):
-        """
-        Display character data for debugging purposes.
-        """
-        i = 0
-        out = ''
-        for c in string:
-            out += dumpChar(c)
-            if i != (len(string)-1):
-                out += ', '
-            if ((i+1)%8) == 0:
-                print(out)
-                out = ''
-            i += 1
-        if len(out) > 0:
+def dumpData(string):
+    """
+    Display character data for debugging purposes.
+    """
+    i = 0
+    out = ''
+    for c in string:
+        out += dumpChar(c)
+        if i != (len(string)-1):
+            out += ', '
+        if ((i+1)%8) == 0:
             print(out)
-        print('====')
+            out = ''
+        i += 1
+    if len(out) > 0:
+        print(out)
+    print('====')
 
-    def dumpString(string):
-        """
-        Return a string containing representation of each character in input string.
-        """
-        i = 0
-        out = '|'
-        for c in string:
-            out += dumpChar(c,True)
-            if i != (len(string)-1):
-                out += '|'
-        return out
+def dumpString(string):
+    """
+    Return a string containing representation of each character in input string.
+    """
+    i = 0
+    out = '|'
+    for c in string:
+        out += dumpChar(c,True)
+        if i != (len(string)-1):
+            out += '|'
+    return out
 
-    def yns(logical):
-        """
-        Return string On or Off reflecting boolean logical.
-        """
-        if( logical ):
-            return "On"
-        else:
-            return "Off"
+def yns(logical):
+    """
+    Return string On or Off reflecting boolean logical.
+    """
+    if( logical ):
+        return "On"
+    else:
+        return "Off"
 
-    # Cyber APL 2 batch codes to extended character number map.
-    cyber_apl_in_map = \
-        {'$ml':200,'$dv':146,'$mx':198,'$mn':197,'$lg':254,
-         '$md':124,'$ci':195,'$ne':194,'$tl':126,'$le':193,
-         '$ge':192,'$an':191,'$or':190,'$nd':189,'$nr':188,
-         '$ro':187,'$cn':186,'$io':185,'$xd':184,'$ep':183,
-         '$ug':182,'$dg':181,'$dl':180,'$sm':178,'$bt':179,
-         '$ta':177,'$dr':176,'$rt':149,'$ru':158,'$bv':150,
-         '$rp':151,'$ev':152,'$fm':153,'$nl':255,'$tp':154,
-         '$is':160,'$qd':156,'$qp':157,'$bc':162,'$ld':159,
-         '$go':155,'$lp':161,'$du':163,'$di':166,'$ng':174
-         }
+# Cyber APL 2 batch codes to extended character number map.
+cyber_apl_in_map = \
+    {'$ml':200,'$dv':146,'$mx':198,'$mn':197,'$lg':254,
+     '$md':124,'$ci':195,'$ne':194,'$tl':126,'$le':193,
+     '$ge':192,'$an':191,'$or':190,'$nd':189,'$nr':188,
+     '$ro':187,'$cn':186,'$io':185,'$xd':184,'$ep':183,
+     '$ug':182,'$dg':181,'$dl':180,'$sm':178,'$bt':179,
+     '$ta':177,'$dr':176,'$rt':149,'$ru':158,'$bv':150,
+     '$rp':151,'$ev':152,'$fm':153,'$nl':255,'$tp':154,
+     '$is':160,'$qd':156,'$qp':157,'$bc':162,'$ld':159,
+     '$go':155,'$lp':161,'$du':163,'$di':166,'$ng':174
+     }
 
-    def cyber_apl_escape(char,ichar,escapeseq,numescape):
-        """
-        Map Cyber APL 2 batch sequences to our extended character set.
-        """
-        #print "***apl_escape called."
-        escapeseq.append(ichar)
-        numescape += 1
-        if numescape == 3:
+def cyber_apl_escape(char,ichar,escapeseq,numescape):
+    """
+    Map Cyber APL 2 batch sequences to our extended character set.
+    """
+    #print "***apl_escape called."
+    escapeseq.append(ichar)
+    numescape += 1
+    if numescape == 3:
+        numescape = 0
+        #print numescape, escapeseq
+        try:
+            keystr = ''
+            for c in escapeseq:
+                keystr += chr(c)
+            repl = []
+            repl.append(cyber_apl_in_map[keystr.lower()])
+            return (False,repl,numescape,False)
+        except:
+            return (False,escapeseq,numescape,False)
+    else:
+        #print numescape, escapeseq
+        return (True,None,numescape,False)
+
+def reverse_dict_kv(indict):
+    """
+    Swap keys and values in a dictionary.
+    """
+    outdict = {}
+    for key,val in list(indict.items()):
+        outdict[val] = key
+    return outdict
+
+def ansi_escape(char,ichar,escapeseq,numescape):
+    """
+    Handle (or just discard) ANSI escape sequences.
+    """
+    ansiendchars = ['A','B','C','D','E','F','G','H','J','K','S',
+                    'T','f','m','n','s','u','l','h','z','Z']
+    #print "***ansi_escape called."
+    escapeseq.append(ichar)
+    numescape += 1
+    # First char (the esc). Stay in escape mode.
+    if numescape == 1:
+        return (True,None,numescape,False)
+    # Second char. Should be [ for ANSI seq. (CSI).
+    # If not, exit escape mode. Return the characters sos they can be used as normal.
+    elif numescape == 2:
+        #print char
+        if char != '[':
             numescape = 0
-            #print numescape, escapeseq
-            try:
-                keystr = ''
-                for c in escapeseq:
-                    keystr += chr(c)
-                repl = []
-                repl.append(cyber_apl_in_map[keystr.lower()])
-                return (False,repl,numescape,False)
-            except:
-                return (False,escapeseq,numescape,False)
+            return (False,escapeseq,numescape,False)
         else:
-            #print numescape, escapeseq
-            return (True,None,numescape,False)
-
-    def reverse_dict_kv(indict):
-        """
-        Swap keys and values in a dictionary.
-        """
-        outdict = {}
-        for key,val in list(indict.items()):
-            outdict[val] = key
-        return outdict
-
-    def ansi_escape(char,ichar,escapeseq,numescape):
-        """
-        Handle (or just discard) ANSI escape sequences.
-        """
-        ansiendchars = ['A','B','C','D','E','F','G','H','J','K','S',
-                        'T','f','m','n','s','u','l','h','z','Z']
-        #print "***ansi_escape called."
-        escapeseq.append(ichar)
-        numescape += 1
-        # First char (the esc). Stay in escape mode.
-        if numescape == 1:
-            return (True,None,numescape,False)
-        # Second char. Should be [ for ANSI seq. (CSI).
-        # If not, exit escape mode. Return the characters sos they can be used as normal.
-        elif numescape == 2:
-            #print char
-            if char != '[':
-                numescape = 0
-                return (False,escapeseq,numescape,False)
-            else:
-                return(True,None,numescape,False)
-        # Third ... Accumulate sequence until a known sequence end char is found.
-        else:
-            if char in ansiendchars:
-                #for c in escapeseq:
-                #    print c
-                numescape = 0
-                # If it is our own graphics extension sequence, process it.
-                # Otherwise, just throw it away for now.
-                if char == 'z' or char == 'Z':
-                    return(False,escapeseq,numescape,True)
-                else:
-                    return(False,None,numescape,False)
-            else:
-                return(True,None,numescape,False)
-
-    def cyber_apl_graphics_escape(char,ichar,escapeseq,numescape):
-        """
-        Handle CDC Cyber APL 2 graphics escape sequences.
-        """
-        ansiendchars = ['@']
-        #print "***cyber_apl_graphics_escape called."
-        escapeseq.append(ichar)
-        numescape += 1
-        # First char (the esc). Stay in escape mode.
-        if numescape == 1:
-            return (True,None,numescape,False)
-        # Second char. Should be [ here. 
-        # If not, exit escape mode. Return the characters so they can be used as normal.
-        elif numescape == 2:
-            #print char
-            if char != '[':
-                numescape = 0
-                return (False,escapeseq,numescape,False)
-            else:
-                return(True,None,numescape,False)
-        # Third ... Accumulate sequence until a known sequence end char is found.
-        else:
-            if char in ansiendchars:
-                #for c in escapeseq:
-                #    print c
-                numescape = 0
-                # It must be our own graphics extension sequence, process it.
+            return(True,None,numescape,False)
+    # Third ... Accumulate sequence until a known sequence end char is found.
+    else:
+        if char in ansiendchars:
+            #for c in escapeseq:
+            #    print c
+            numescape = 0
+            # If it is our own graphics extension sequence, process it.
+            # Otherwise, just throw it away for now.
+            if char == 'z' or char == 'Z':
                 return(False,escapeseq,numescape,True)
             else:
-                return(True,None,numescape,False)            
+                return(False,None,numescape,False)
+        else:
+            return(True,None,numescape,False)
 
-    class TerminalDialog(QDialog):
-        """
-        Complete GUI Telnet client using a glass teletype model.
-        """
-        def __init__(self,parent=None):
-            super(TerminalDialog,self).__init__(parent)
-            # Try to have the dialog show a minimize icon.
-            windowflags = Qt.Window | Qt.WindowSystemMenuHint | \
-                Qt.WindowMinimizeButtonHint | Qt.WindowCloseButtonHint
-            self.setWindowFlags(windowflags)
-            ouriconname = get_application_file_name( 'gterm', 'gtermicon.png' )
-            self.setWindowIcon( QIcon( ouriconname ) )
-            self.setWindowTitle('GTerm')
-            # Log file name and location.
-            self.lfname = ''
-            self.logdir = '/tmp' #  '.'
-            # Telnet terminal widget.
-            self.screen = GTermTelnetWidget(charsetname='mainfonttexture',vkbname='aplvkb',\
-                                                umapname='mainfontunicode' )
-            self.screen.setFocus()
-            self.screen.set_debuglevel(0)
-            self.screen.set_userwidget(self)
-            # Escape sequence processor. Compatible with default localhost unix mode.
-            self.mode(3)
-            # Send DEL for backspace key
-            self.screen.backspaceSendsDelete(True)
-            # Open and parse the host data file.
-            self.read_host_data()
-            # First horizontal group of PyQt widgets.
-            self.showVkbCheckBox = QCheckBox("Show keyboard")
-            self.showNonPrintCheckBox = QCheckBox("Show non-print")
-            self.localEchoCheckBox = QCheckBox("Local echo")
-            self.debugCheckBox = QCheckBox("Debug")
-            self.modeComboBox = QComboBox()
-            self.modeComboBox.addItems(["Cyber/APL","Cyber","VMS","Unix","Unix/Alt","Windows"])
-            self.modeComboBox.setCurrentIndex(3) # Make default Unix to match local host.
-            self.viewComboBox = QComboBox()
-            self.viewComboBox.addItems(["Text","Graphics"])
-            self.ffClearsCheckBox = QCheckBox("FF clears")
-            self.onPaperCheckBox = QCheckBox("On paper")
-            self.noEscapeCheckBox = QCheckBox("No escape")
-            checkboxLayout = QHBoxLayout()
-            checkboxLayout.addWidget(self.modeComboBox)
-            checkboxLayout.addWidget(self.showVkbCheckBox)
-            checkboxLayout.addWidget(self.showNonPrintCheckBox)
-            checkboxLayout.addWidget(self.localEchoCheckBox)
-            checkboxLayout.addWidget(self.debugCheckBox)
-            checkboxLayout.addWidget(self.ffClearsCheckBox)
-            checkboxLayout.addWidget(self.onPaperCheckBox)
-            checkboxLayout.addWidget(self.noEscapeCheckBox)
-            checkboxLayout.addWidget(self.viewComboBox)
-            # Second horizontal group of PyQt widgets.
-            # Set default host to be localhost, port 23, unix mode.
-            self.hostAddressEdit = QLineEdit("localhost")
-            self.portNumberSpinbox = QSpinBox()
-            self.portNumberSpinbox.setRange(1,99999)
-            self.portNumberSpinbox.setValue(23)
-            self.connectPushButton = QPushButton("Connect")
-            self.clearPushButton = QPushButton("Clear")
-            self.logRenameButton = QPushButton("Save log")
-            self.saveGrafButton = QPushButton("Save graphics")
-            self.hostsComboBox = QComboBox()
-            for hostrecord in self.hostinfo:
-                self.hostsComboBox.addItem(hostrecord[0])
-            labelhosts = QLabel("To:")
-            self.guideComboBox = QComboBox()
-            self.guideComboBox.addItems(["No guide","Fortran"])
-            self.statusButton = QPushButton("Status")
-            buttonLayout = QHBoxLayout()
-            buttonLayout.addWidget(self.hostAddressEdit)
-            buttonLayout.addWidget(self.portNumberSpinbox)
-            buttonLayout.addWidget(self.connectPushButton)
-            buttonLayout.addWidget(labelhosts)
-            buttonLayout.addWidget(self.hostsComboBox)
-            buttonLayout.addWidget(self.clearPushButton)
-            buttonLayout.addWidget(self.logRenameButton)
-            buttonLayout.addWidget(self.saveGrafButton)
-            buttonLayout.addWidget(self.guideComboBox)
-            buttonLayout.addWidget(self.statusButton)
-            # Assemble the groups vertically
-            layout = QVBoxLayout()
-            layout.addWidget(self.screen)
-            layout.addLayout(buttonLayout)
-            layout.addLayout(checkboxLayout)
-            self.setLayout(layout)
-            # Connect event handlers
-            self.connectPushButton.clicked.connect(self.connecthost)
-            self.clearPushButton.clicked.connect(self.clear)
-            self.showVkbCheckBox.stateChanged.connect(self.showvkb)
-            self.localEchoCheckBox.stateChanged.connect(self.localecho)
-            self.debugCheckBox.stateChanged.connect(self.debugon)
-            self.modeComboBox.currentIndexChanged.connect(self.mode)
-            self.viewComboBox.currentIndexChanged.connect(self.view)
-            self.logRenameButton.clicked.connect(self.renamelog)
-            self.saveGrafButton.clicked.connect(self.savegraf)
-            self.ffClearsCheckBox.stateChanged.connect(self.ffmode)
-            self.onPaperCheckBox.stateChanged.connect(self.onpaper)
-            self.hostsComboBox.currentIndexChanged.connect(self.selectknownhost)
-            self.statusButton.clicked.connect(self.showstatus)
-            self.guideComboBox.currentIndexChanged.connect(self.guide)
-            self.noEscapeCheckBox.stateChanged.connect(self.noescapemode)
-
-            #self.screen.connect(self.screen,SIGNAL("knownAltKey(int)"),self.alt_key_handler)
-
-        def alt_key_handler(self,kcode):
-            """
-            Handle special Alt key combinations as defined in GTermTelnetWidget.event().
-            """
-            if kcode == 1:   # t: go to text view
-                self.viewComboBox.setCurrentIndex(1)
-            elif kcode == 2: # g: go to graphics view
-                self.viewComboBox.setCurrentIndex(0)
-            elif kcode == 3: # k: toggle virtual keyboard state.
-                self.showVkbCheckBox.nextCheckState()
-            elif kcode == 4: # u: scroll up 20 lines OR PgUp
-                self.screen.deltaScroll(20)
-            elif kcode == 5: # d: scroll down 20 lines OR PgDn
-                self.screen.deltaScroll(-20)
-            elif kcode == 6: # h: no scroll OR Home
-                self.screen.setScroll(0)
-                self.screen.clearModifiers()
-            elif kcode == 8: # s: toggle graphics square mode
-                self.screen.toggleSquare()
-
-        def read_host_data(self):
-            """
-            Get information on known host systems.
-            """
-            self.hostinfo = [['localhost','localhost',23,'unix']]
-            try:
-                ourhostinfo = get_application_file_name( 'gterm', 'gtermhostinfo.txt' )
-                flun = open(ourhostinfo,'r')
-                linenum = 0
-                for line in flun:
-                    linenum += 1
-                    if line[0] != '#':
-                        words = line.rstrip().split()
-                        if len(words) == 4:
-                            try:
-                                words[2] = int(words[2])
-                                self.hostinfo.append(words)
-                            except:
-                                print('*** ERROR: hostinfo: expected integer port number at line:',linenum)
-                        else:
-                            print('*** ERROR: hostinfo: expected 4 words on line. At line:',linenum)
-                flun.close()
-                #print self.hostinfo
-            except:
-                print('*** WARNING: Failed to read gtermhostinfo.txt')
-
-        def logfilename(self):
-            """
-            Generate a log file name from the current time and date.
-            """
-            localtime = time.localtime(time.time())
-            tstring = 'gterm_log_{0:04d}_{1:02d}_{2:02d}_{3:02d}_{4:02d}_{5:02d}.utxt'.\
-                format(localtime.tm_year,localtime.tm_mon,localtime.tm_mday,\
-                           localtime.tm_hour,localtime.tm_min,localtime.tm_sec)
-            self.lfname = os.path.abspath(os.path.join(self.logdir,tstring))
-
-        def connecthost(self):
-            """
-            Connect to host - but only if not already connected.
-            """
-            self.logfilename()
-            if not self.screen.haveconnection:
-                self.screen.clearScreen()
-                self.screen.open_conn(str(self.hostAddressEdit.text()), self.portNumberSpinbox.value())
-                self.screen.openLogFile(self.lfname)
-
-        def selectknownhost(self,ihost):
-            """
-            Choose the known host to connect to.
-            """
-            hostrecord = self.hostinfo[ihost]
-            self.hostAddressEdit.setText(hostrecord[1])
-            self.portNumberSpinbox.setValue(hostrecord[2])
-            typename_to_index = {'nosapl':0,'nos':1,'vms':2,'unix':3,'unixalt':4,'windows':5}
-            try:
-                imode = typename_to_index[hostrecord[3]]
-            except:
-                imode = 3
-            self.mode(imode)
-            self.modeComboBox.setCurrentIndex(imode)
-
-        def clear(self):
-            """
-            Clear the screen.
-            """
-            self.screen.clearScreen()
-
-        def setlogdir(self,logfiledir):
-            """
-            Set the directory to keep log files in.
-            """
-            self.logdir = logfiledir
-
-        def renamelog(self):
-            """
-            Close the log file, rename it and open a new log file.
-            """
-            fname = QFileDialog.getSaveFileName(self,'Save log',os.getenv('HOME'))
-            try:
-                fname = fname[0]
-                if len(fname) > 0:
-                    self.screen.closeLogFile()
-                    shutil.move(self.lfname,str(fname))
-                    self.logfilename()
-                    self.screen.openLogFile(self.lfname)
-            except Exception as e:
-                print('renamelog(): Do not understand:',self.lfname,str(fname))
-                print('... reason:',e)
-
-        def savegraf(self):
-            """
-            Save graphics to SVG format file.
-            """
-            fname = QFileDialog.getSaveFileName(self,'Save graphics',os.getenv('HOME'))
-            try:
-                fname = fname[0]
-                if len(fname) > 0:
-                    self.screen.saveGraphics(str(fname))
-            except Exception as e:
-                print('savegraf(): Do not understand:',str(fname))
-                print('... reason:',e)
-
-        def showvkb(self):
-            """
-            Show the virtual keyboard.
-            """
-            self.screen.set_showvkb(self.showVkbCheckBox.isChecked())
-
-        def nonprint(self):
-            """
-            Show non-printing characters.
-            """
-            self.screen.set_shownonprint(self.showNonPrintCheckBox.isChecked())
-
-        def localecho(self):
-            """
-            Do local echo.
-            """
-            self.screen.set_local_echo(self.localEchoCheckBox.isChecked())
-
-        def debugon(self):
-            """
-            Turn debug output on or off.
-            """
-            if self.debugCheckBox.isChecked():
-                self.screen.set_debuglevel(10)
-            else:
-                self.screen.set_debuglevel(0)
-
-        def ffmode(self):
-            """
-            Clear text on form feed. Or not.
-            """
-            self.screen.setFFMode(self.ffClearsCheckBox.isChecked())
-
-        def onpaper(self):
-            """
-            Turn on green bar paper background. Or not.
-            """
-            self.screen.setOnPaper(self.onPaperCheckBox.isChecked())
-
-        def noescapemode(self):
-            """
-            Turn off escape processing to allow esacpe character to be typed in.
-            """
-            self.screen.set_escape_on_off(self.noEscapeCheckBox.isChecked())
-
-        def set_arrow_keys(self):
-            """
-            ANSI arrow key code definitions.
-            """
-            self.screen.fancykeymap[Qt.Key_Up] = '\033[A'
-            self.screen.fancykeymap[Qt.Key_Down] = '\033[B'
-            self.screen.fancykeymap[Qt.Key_Right] = '\033[C'
-            self.screen.fancykeymap[Qt.Key_Left] = '\033[D'
-
-        def mode(self,imode):
-            """
-            Operating mode.
-            """
-            if imode == 0:
-                # Cyber/APL mode.
-                self.screen.fancykeymap.clear()
-                self.screen.clearEscapeProcessors()
-                self.screen.setEscapeProcessFunc('$',cyber_apl_escape)
-                self.screen.setEscapeProcessFunc('@',cyber_apl_graphics_escape)
-                self.screen.backspaceSendsDelete(False)
-                self.screen.followBackspaceWithNewline(True)
-                self.screen.char_to_string_map = reverse_dict_kv(cyber_apl_in_map)
-                # Define a string to send if F1 key is pressed.
-                self.screen.fancykeymap[Qt.Key_F1] = 'APL,TT=713.\r'
-                self.screen.set_terminate_char(20) # Ctrl-T
-                self.screen.set_local_recall(True)
-            elif imode == 1:
-                # Cyber without APL mode.
-                self.screen.fancykeymap.clear()
-                self.screen.clearEscapeProcessors()
-                self.screen.setEscapeProcessFunc(chr(0x1b),ansi_escape)
-                self.screen.backspaceSendsDelete(False)
-                self.screen.followBackspaceWithNewline(False)
-                # Define a string to send if F2 key is pressed.
-                self.screen.fancykeymap[Qt.Key_F2] = 'ABGPLOT,OBEY=APLOT,GET=Y.\r'
-                self.screen.set_terminate_char(20) # Ctrl-T
-                self.screen.set_local_recall(True)
-            elif imode == 2:
-                # VMS mode.
-                self.screen.fancykeymap.clear()
-                self.screen.clearEscapeProcessors()
-                self.screen.setEscapeProcessFunc(chr(0x1b),ansi_escape)
-                self.screen.backspaceSendsDelete(True)
-                self.screen.followBackspaceWithNewline(False)
-                # Define a string to send if F1 key is pressed.
-                self.screen.fancykeymap[Qt.Key_F1] = 'set term/echo/unknown\r'
-                # Define strings for the arrow keys (VT100 strings)
-                self.set_arrow_keys()
-                self.screen.set_terminate_char(25) # Ctrl-Y
-                self.screen.set_local_recall(False)
-            elif imode == 3:
-                # Unix mode.
-                self.screen.fancykeymap.clear()
-                self.screen.clearEscapeProcessors()
-                self.screen.setEscapeProcessFunc(chr(0x1b),ansi_escape)
-                self.screen.backspaceSendsDelete(True)
-                self.screen.followBackspaceWithNewline(False)
-                # Define strings for the arrow keys (VT100 strings)
-                self.set_arrow_keys()
-                self.screen.set_terminate_char(3) # Ctrl-C
-                self.screen.set_local_recall(False)
-            elif imode == 4:
-                # Unix mode / Alt graphics.
-                self.screen.fancykeymap.clear()
-                self.screen.clearEscapeProcessors()
-                self.screen.setEscapeProcessFunc(chr(0x1b),ansi_escape)
-                self.screen.setEscapeProcessFunc('@',cyber_apl_graphics_escape)
-                self.screen.backspaceSendsDelete(True)
-                self.screen.followBackspaceWithNewline(False)
-                # Define strings for the arrow keys (VT100 strings)
-                self.set_arrow_keys()
-                self.screen.set_terminate_char(3) # Ctrl-C
-                self.screen.set_local_recall(False)
-            elif imode == 5:
-                # Windows mode.
-                self.screen.fancykeymap.clear()
-                self.screen.clearEscapeProcessors()
-                self.screen.setEscapeProcessFunc(chr(0x1b),ansi_escape)
-                self.screen.backspaceSendsDelete(False)
-                self.screen.followBackspaceWithNewline(False)
-                # Define strings for the arrow keys (VT100 strings)
-                self.set_arrow_keys()
-                self.screen.set_terminate_char(3) # Ctrl-C
-                self.screen.set_local_recall(False)
-                
-        def view(self,iview):
-            """
-            View text or graphics.
-            """
-            if iview == 0:
-                self.screen.viewText()
-            elif iview == 1:
-                self.screen.viewGraphics()
-
-        def guide(self,iguide):
-            """
-            Show a horizontal position guide. Or not.
-            """
-            guides = [ [], [6,72,80] ] # None, Fortran, ...
-            try:
-                guide_pos = guides[iguide]
-            except:
-                guide_pos = []
-            self.screen.set_horizontal_guide( guide_pos )
-                
-        def showstatus(self):
-            """
-            Show status dialog.
-            """
-            sp3 = '&nbsp;&nbsp;&nbsp;'
-            sp6 = sp3 + sp3
-            fancykeynames = {Qt.Key_F1:'F1',Qt.Key_F2:'F2',Qt.Key_F3:'F3',Qt.Key_F4:'F4',
-                             Qt.Key_F5:'F5',Qt.Key_F6:'F6',Qt.Key_F7:'F7',Qt.Key_F8:'F8',
-                             Qt.Key_F9:'F9',Qt.Key_F10:'F10',Qt.Key_F11:'F11',Qt.Key_F12:'F12',
-                             Qt.Key_F13:'F13',Qt.Key_F14:'F14',Qt.Key_F15:'F15',Qt.Key_F16:'F16',
-                             Qt.Key_Up:'Up Arrow',Qt.Key_Down:'Down Arrow',
-                             Qt.Key_Left:'Left Arrow',Qt.Key_Right:'Right Arrow'}
-            smsg = "<font color=red size=14><b>GTerm Status Information:</b></font><br>"
-            smsg += "{0}<b>Version information:</b><br>".format(sp3)
-            smsg += "{0}Version: {1}<br>".format(sp6,_current_git_desc)
-            smsg += "{0}Git HEAD: {1}<br>".format(sp6,_current_git_hash)
-            try:
-                buildtime = time.ctime(os.path.getmtime(__file__))
-                smsg += "{0}GTerm script (apparently) last modified: {1}<br>".format(sp6,buildtime)
-            except:
-                pass
-            smsg += "{0}Author: Nick Glazzard (nick@hccc.org.uk)<br>".format(sp6)
-            smsg += "{0}<b>Window Geometry:</b><br>".format(sp3)
-            widthchars = int((self.screen.viewport[0]-self.screen.xmargin)/self.screen.charspace)
-            heightchars = int((self.screen.viewport[1]-self.screen.ymargin)/self.screen.linespace)
-            smsg += "{0}Width = {1} pixels, {3} chars, Height = {2} pixels, {4} lines.<br>".\
-                format(sp6,self.screen.width_pixels,self.screen.height_pixels,widthchars,heightchars)
-            smsg += "{0}Aspect ratio = {1}<br>".format(sp6,self.screen.aspect)
-            smsg += "{0}<b>Configuration files:</b><br>".format(sp3)
-            smsg += "{0}Character texture map: {1} (.jsn/.png)<br>".format(sp6,self.screen.save_charsetname)
-            smsg += "{0}Virtual keyboard map: {1} (.jsn/.png)<br>".format(sp6,self.screen.save_vkbname)
-            smsg += "{0}Unicode log file map: {1} (.jsn)<br>".format(sp6,self.screen.save_umapname)
-            smsg += "{0}Bell sound WAV file: {1}<br>".format(sp6,self.screen.bell_wav)
-            smsg += "{0}<b>Modifier states:</b><br>".format(sp3)
-            smsg += "{0}Shift: {1}, ShiftLock: {2}, Control: {3}, Alt: {4}<br>".\
-                format(sp6,yns(self.screen.shift),yns(self.screen.shiftlock),yns(self.screen.ctrl),yns(self.screen.alt))
-            smsg += "{0}<b>Terminate character: {1}</b><br>".format(sp3,dumpChar(chr(self.screen.terminate_char)))
-            smsg += "{0}<b>Number of fancy keys defined: {1}</b><br>".format(sp3,len(self.screen.fancykeymap))
-            if len(self.screen.fancykeymap) > 0:
-                for k in list(self.screen.fancykeymap.keys()):
-                    try:
-                        kname = fancykeynames[k]
-                    except:
-                        kname = 'Unknown'
-                    smsg += "{0}Key:{1} = {2}<br>".format(sp6,kname,dumpString(self.screen.fancykeymap[k]))
-            smsg += "{0}<b>Number of escape processors defined: {1}</b><br>"\
-                .format(sp3,len(self.screen.escapeProcessFuncList))
-            if len(self.screen.escapeProcessFuncList) > 0:
-                for i in range(0,len(self.screen.escapeProcessFuncList)):
-                    (ec,epf) = self.screen.escapeProcessFuncList[i]
-                    smsg += "{0}{1}: {2}<br>".format(sp6,i+1,epf.__name__)
-            smsg += "{0}<b>Number of incoming single character mappings defined: {1}</b><br>"\
-                .format(sp3,len(self.screen.incharmap))
-            if len(self.screen.incharmap) > 0:
-                i = 1
-                for k in list(self.screen.incharmap.keys()):
-                    smsg += "{0}{1}: {2} -> {3}<br>"\
-                        .format(sp6,i,dumpChar(chr(k),True),dumpChar(chr(self.screen.incharmap[k]),True))
-                    i += 1
-            smsg += "{0}<b>Number of outgoing single character mappings defined: {1}</b><br>"\
-                .format(sp3,len(self.screen.outcharmap))
-            if len(self.screen.outcharmap) > 0:
-                i = 1
-                for k in list(self.screen.outcharmap.keys()):
-                    smsg += "{0}{1}: {2} -> {3}<br>"\
-                        .format(sp6,i,dumpChar(chr(k),True),dumpChar(chr(self.screen.outcharmap[k]),True))
-                    i += 1
-            if self.screen.char_to_string_map == None:
-                ncsm = 0
-            else:
-                ncsm = len(self.screen.char_to_string_map)
-            smsg += "{0}<b>Number of character to string mappings: {1}</b><br>"\
-                .format(sp3,ncsm)
-            smsg += "{0}<b>Telnet connection: {1}</b><br>".format(sp3,yns(self.screen.haveconnection))
-            if self.screen.haveconnection:
-                smsg += "{0}Connected since: {1}<br>".format(sp6,self.screen.connect_time)
-            smsg += "{0}<b>Text plane state:</b><br>".format(sp3)
-            smsg += "{0}Maximum buffer size = {1} lines.<br>".format(sp6,self.screen.maxlines)
-            smsg += "{0}Number of lines currently in buffer = {1}<br>".format(sp6,len(self.screen.screen))
-            smsg += "{0}Visible region scroll = {1} lines<br>".format(sp6,self.screen.scroll)
-            smsg += "{0}<b>Graphics plane state:</b><br>".format(sp3)
-            smsg += "{0}Commands in graphics buffer = {1}<br>".format(sp6,self.screen.gcbcmds)
-
-            # Display it. Use a label in a scrollable area.
-            self.statLabel = QLabel(smsg)
-            self.scrollArea = QScrollArea()
-            self.scrollArea.setGeometry(QRect(10,10,550,650))
-            self.scrollArea.setWidgetResizable(True)
-            self.scrollArea.setWindowTitle("GTerm Help and Status")
-            self.scrollAreaWidgetContents = QWidget()
-            self.scrollAreaWidgetContents.setGeometry(QRect(10,10,550,650))
-            self.scrollArea.setWidget(self.statLabel)
-            self.scrollArea.show()
-
-        def closeEvent(self, event):
-            """
-            Intercept close program event.
-            """
-            quit_msg = "Exit GTerm?"
-            reply = QMessageBox.question(self, 'GTerm Exit Warning', quit_msg, QMessageBox.Yes, QMessageBox.No)
-            if reply == QMessageBox.Yes:
-                # If there is an open connection, close it so the server end disconnects.
-                # The read input thread is still running and will not like this, but ...
-                if self.screen.haveconnection:
-                    try:
-                        self.screen.telnet.close()
-                    except:
-                        pass
-                event.accept()
-            else:
-                event.ignore()
-
-    # Main line
-    if sys.platform.startswith('darwin'):
-        pass
+def cyber_apl_graphics_escape(char,ichar,escapeseq,numescape):
+    """
+    Handle CDC Cyber APL 2 graphics escape sequences.
+    """
+    ansiendchars = ['@']
+    #print "***cyber_apl_graphics_escape called."
+    escapeseq.append(ichar)
+    numescape += 1
+    # First char (the esc). Stay in escape mode.
+    if numescape == 1:
+        return (True,None,numescape,False)
+    # Second char. Should be [ here. 
+    # If not, exit escape mode. Return the characters so they can be used as normal.
+    elif numescape == 2:
+        #print char
+        if char != '[':
+            numescape = 0
+            return (False,escapeseq,numescape,False)
+        else:
+            return(True,None,numescape,False)
+    # Third ... Accumulate sequence until a known sequence end char is found.
     else:
-        QCoreApplication.setAttribute(Qt.AA_X11InitThreads)
+        if char in ansiendchars:
+            #for c in escapeseq:
+            #    print c
+            numescape = 0
+            # It must be our own graphics extension sequence, process it.
+            return(False,escapeseq,numescape,True)
+        else:
+            return(True,None,numescape,False)
+
+class TerminalDialog(QDialog):
+    """
+    Complete GUI Telnet client using a glass teletype model.
+    """
+    def __init__(self,parent=None):
+        super(TerminalDialog,self).__init__(parent)
+        # Try to have the dialog show a minimize icon.
+        windowflags = Qt.Window | Qt.WindowSystemMenuHint | \
+            Qt.WindowMinimizeButtonHint | Qt.WindowCloseButtonHint
+        self.setWindowFlags(windowflags)
+        ouriconname = get_application_file_name( 'gterm', 'gtermicon.png' )
+        self.setWindowIcon( QIcon( ouriconname ) )
+        self.setWindowTitle('GTerm')
+        # Log file name and location.
+        self.lfname = ''
+        self.logdir = '/tmp'
+        # Telnet terminal widget.
+        self.screen = GTermTelnetWidget(charsetname='mainfonttexture',vkbname='aplvkb',\
+                                            umapname='mainfontunicode' )
+        self.screen.setFocus()
+        self.screen.set_debuglevel(0)
+        self.screen.set_userwidget(self)
+        # Escape sequence processor. Compatible with default localhost unix mode.
+        self.mode(3)
+        # Send DEL for backspace key
+        self.screen.backspaceSendsDelete(True)
+        # Open and parse the host data file.
+        self.read_host_data()
+        # First horizontal group of PyQt widgets.
+        self.showVkbCheckBox = QCheckBox("Show keyboard")
+        self.showNonPrintCheckBox = QCheckBox("Show non-print")
+        self.localEchoCheckBox = QCheckBox("Local echo")
+        self.debugCheckBox = QCheckBox("Debug")
+        self.modeComboBox = QComboBox()
+        self.modeComboBox.addItems(["Cyber/APL","Cyber","VMS","Unix","Unix/Alt","Windows"])
+        self.modeComboBox.setCurrentIndex(3) # Make default Unix
+        self.viewComboBox = QComboBox()
+        self.viewComboBox.addItems(["Text","Graphics"])
+        self.ffClearsCheckBox = QCheckBox("FF clears")
+        self.onPaperCheckBox = QCheckBox("On paper")
+        self.noEscapeCheckBox = QCheckBox("No escape")
+        checkboxLayout = QHBoxLayout()
+        checkboxLayout.addWidget(self.modeComboBox)
+        checkboxLayout.addWidget(self.showVkbCheckBox)
+        checkboxLayout.addWidget(self.showNonPrintCheckBox)
+        checkboxLayout.addWidget(self.localEchoCheckBox)
+        checkboxLayout.addWidget(self.debugCheckBox)
+        checkboxLayout.addWidget(self.ffClearsCheckBox)
+        checkboxLayout.addWidget(self.onPaperCheckBox)
+        checkboxLayout.addWidget(self.noEscapeCheckBox)
+        checkboxLayout.addWidget(self.viewComboBox)
+        # Second horizontal group of PyQt widgets.
+        # Set default host to be localhost, port 23, unix mode.
+        self.hostAddressEdit = QLineEdit("localhost")
+        self.portNumberSpinbox = QSpinBox()
+        self.portNumberSpinbox.setRange(1,99999)
+        self.portNumberSpinbox.setValue(23)
+        self.connectPushButton = QPushButton("Connect")
+        self.clearPushButton = QPushButton("Clear")
+        self.logRenameButton = QPushButton("Save log")
+        self.saveGrafButton = QPushButton("Save graphics")
+        self.hostsComboBox = QComboBox()
+        for hostrecord in self.hostinfo:
+            self.hostsComboBox.addItem(hostrecord[0])
+        labelhosts = QLabel("To:")
+        self.guideComboBox = QComboBox()
+        self.guideComboBox.addItems(["No guide","Fortran"])
+        self.statusButton = QPushButton("Status")
+        buttonLayout = QHBoxLayout()
+        buttonLayout.addWidget(self.hostAddressEdit)
+        buttonLayout.addWidget(self.portNumberSpinbox)
+        buttonLayout.addWidget(self.connectPushButton)
+        buttonLayout.addWidget(labelhosts)
+        buttonLayout.addWidget(self.hostsComboBox)
+        buttonLayout.addWidget(self.clearPushButton)
+        buttonLayout.addWidget(self.logRenameButton)
+        buttonLayout.addWidget(self.saveGrafButton)
+        buttonLayout.addWidget(self.guideComboBox)
+        buttonLayout.addWidget(self.statusButton)
+        # Assemble the groups vertically
+        layout = QVBoxLayout()
+        layout.addWidget(self.screen)
+        layout.addLayout(buttonLayout)
+        layout.addLayout(checkboxLayout)
+        self.setLayout(layout)
+        # Connect event handlers
+        self.connectPushButton.clicked.connect(self.connecthost)
+        self.clearPushButton.clicked.connect(self.clear)
+        self.showVkbCheckBox.stateChanged.connect(self.showvkb)
+        self.localEchoCheckBox.stateChanged.connect(self.localecho)
+        self.debugCheckBox.stateChanged.connect(self.debugon)
+        self.modeComboBox.currentIndexChanged.connect(self.mode)
+        self.viewComboBox.currentIndexChanged.connect(self.view)
+        self.logRenameButton.clicked.connect(self.renamelog)
+        self.saveGrafButton.clicked.connect(self.savegraf)
+        self.ffClearsCheckBox.stateChanged.connect(self.ffmode)
+        self.onPaperCheckBox.stateChanged.connect(self.onpaper)
+        self.hostsComboBox.currentIndexChanged.connect(self.selectknownhost)
+        self.statusButton.clicked.connect(self.showstatus)
+        self.guideComboBox.currentIndexChanged.connect(self.guide)
+        self.noEscapeCheckBox.stateChanged.connect(self.noescapemode)
+        # Connect signals for cross-thread calls to update display.
+        self.screen.doUpdate_signal_object.signal.connect(self.screen.doUpdate)
+        self.screen.doGrUpdate_signal_object.signal.connect(self.screen.doGrUpdate)
+
+    def alt_key_handler(self,kcode):
+        """
+        Handle special Alt key combinations as defined in GTermTelnetWidget.event().
+        """
+        if kcode == 1:   # t: go to text view
+            self.viewComboBox.setCurrentIndex(1)
+        elif kcode == 2: # g: go to graphics view
+            self.viewComboBox.setCurrentIndex(0)
+        elif kcode == 3: # k: toggle virtual keyboard state.
+            self.showVkbCheckBox.nextCheckState()
+        elif kcode == 4: # u: scroll up 20 lines OR PgUp
+            self.screen.deltaScroll(20)
+        elif kcode == 5: # d: scroll down 20 lines OR PgDn
+            self.screen.deltaScroll(-20)
+        elif kcode == 6: # h: no scroll OR Home
+            self.screen.setScroll(0)
+            self.screen.clearModifiers()
+        elif kcode == 8: # s: toggle graphics square mode
+            self.screen.toggleSquare()
+        elif kcode == 9 :# v: paste one line of any clipboard contents to current line.
+            self.screen.paste_from_clipboard()
+
+    def read_host_data(self):
+        """
+        Get information on known host systems.
+        """
+        self.hostinfo = [['localhost','localhost',23,'unix']]
+        ourhostinfo = os.path.join(os.path.expanduser('~'), 'gtermhostinfo.txt' )
+        try:
+            flun = open(ourhostinfo,'r')
+            linenum = 0
+            for line in flun:
+                linenum += 1
+                if line[0] != '#':
+                    words = line.rstrip().split()
+                    if len(words) == 4:
+                        try:
+                            words[2] = int(words[2])
+                            self.hostinfo.append(words)
+                        except:
+                            print('*** ERROR: hostinfo: expected integer port number at line:',linenum)
+                    else:
+                        print('*** ERROR: hostinfo: expected 4 words on line. At line:',linenum)
+            flun.close()
+            #print self.hostinfo
+        except Exception as e:
+            print('*** WARNING: Failed to read:', ourhostinfo)
+            print('... Reason:', e)
+
+    def logfilename(self):
+        """
+        Generate a log file name from the current time and date.
+        """
+        localtime = time.localtime(time.time())
+        tstring = 'gterm_log_{0:04d}_{1:02d}_{2:02d}_{3:02d}_{4:02d}_{5:02d}.utxt'.\
+            format(localtime.tm_year,localtime.tm_mon,localtime.tm_mday,\
+                       localtime.tm_hour,localtime.tm_min,localtime.tm_sec)
+        self.lfname = os.path.abspath(os.path.join(self.logdir,tstring))
+
+    def connecthost(self):
+        """
+        Connect to host - but only if not already connected.
+        """
+        self.logfilename()
+        if not self.screen.haveconnection:
+            self.screen.clearScreen()
+            self.screen.open_conn(str(self.hostAddressEdit.text()), self.portNumberSpinbox.value())
+            self.screen.openLogFile(self.lfname)
+
+    def selectknownhost(self,ihost):
+        """
+        Choose the known host to connect to.
+        """
+        hostrecord = self.hostinfo[ihost]
+        self.hostAddressEdit.setText(hostrecord[1])
+        self.portNumberSpinbox.setValue(hostrecord[2])
+        typename_to_index = {'nosapl':0,'nos':1,'vms':2,'unix':3,'unixalt':4,'windows':5}
+        try:
+            imode = typename_to_index[hostrecord[3]]
+        except:
+            imode = 3
+        self.mode(imode)
+        self.modeComboBox.setCurrentIndex(imode)
+
+    def clear(self):
+        """
+        Clear the screen.
+        """
+        self.screen.clearScreen()
+
+    def setlogdir(self,logfiledir):
+        """
+        Set the directory to keep log files in.
+        """
+        self.logdir = logfiledir
+
+    def renamelog(self):
+        """
+        Close the log file, rename it and open a new log file.
+        """
+        fname = QFileDialog.getSaveFileName(self,'Save log',os.getenv('HOME'))
+        try:
+            fname = fname[0]
+            if len(fname) > 0:
+                self.screen.closeLogFile()
+                shutil.move(self.lfname,str(fname))
+                self.logfilename()
+                self.screen.openLogFile(self.lfname)
+        except Exception as e:
+            print('renamelog(): Do not understand:',self.lfname,str(fname))
+            print('... Reason:',e)
+
+    def savegraf(self):
+        """
+        Save graphics to SVG format file.
+        """
+        fname = QFileDialog.getSaveFileName(self,'Save graphics',os.getenv('HOME'))
+        try:
+            fname = fname[0]
+            if len(fname) > 0:
+                self.screen.saveGraphics(str(fname))
+        except Exception as e:
+            print('savegraf(): Do not understand:',str(fname))
+            print('... Reason:',e)
+
+    def showvkb(self):
+        """
+        Show the virtual keyboard.
+        """
+        self.screen.set_showvkb(self.showVkbCheckBox.isChecked())
+
+    def nonprint(self):
+        """
+        Show non-printing characters.
+        """
+        self.screen.set_shownonprint(self.showNonPrintCheckBox.isChecked())
+
+    def localecho(self):
+        """
+        Do local echo.
+        """
+        self.screen.set_local_echo(self.localEchoCheckBox.isChecked())
+
+    def debugon(self):
+        """
+        Turn debug output on or off.
+        """
+        if self.debugCheckBox.isChecked():
+            self.screen.set_debuglevel(10)
+        else:
+            self.screen.set_debuglevel(0)
+
+    def ffmode(self):
+        """
+        Clear text on form feed. Or not.
+        """
+        self.screen.setFFMode(self.ffClearsCheckBox.isChecked())
+
+    def onpaper(self):
+        """
+        Turn on green bar paper background. Or not.
+        """
+        self.screen.setOnPaper(self.onPaperCheckBox.isChecked())
+
+    def noescapemode(self):
+        """
+        Turn off escape processing to allow esacpe character to be typed in.
+        """
+        self.screen.set_escape_on_off(self.noEscapeCheckBox.isChecked())
+
+    def set_arrow_keys(self):
+        """
+        ANSI arrow key code definitions.
+        """
+        self.screen.fancykeymap[Qt.Key_Up] = '\033[A'
+        self.screen.fancykeymap[Qt.Key_Down] = '\033[B'
+        self.screen.fancykeymap[Qt.Key_Right] = '\033[C'
+        self.screen.fancykeymap[Qt.Key_Left] = '\033[D'
+
+    def mode(self,imode):
+        """
+        Operating mode.
+        """
+        if imode == 0:
+            # Cyber/APL mode.
+            self.screen.fancykeymap.clear()
+            self.screen.clearEscapeProcessors()
+            self.screen.setEscapeProcessFunc('$',cyber_apl_escape)
+            self.screen.setEscapeProcessFunc('@',cyber_apl_graphics_escape)
+            self.screen.backspaceSendsDelete(False)
+            self.screen.followBackspaceWithNewline(True)
+            self.screen.char_to_string_map = reverse_dict_kv(cyber_apl_in_map)
+            # Define a string to send if F1 key is pressed.
+            self.screen.fancykeymap[Qt.Key_F1] = 'APL,TT=713.\r'
+            self.screen.set_terminate_char(20) # Ctrl-T
+            self.screen.set_local_recall(True)
+        elif imode == 1:
+            # Cyber without APL mode.
+            self.screen.fancykeymap.clear()
+            self.screen.clearEscapeProcessors()
+            self.screen.setEscapeProcessFunc(chr(0x1b),ansi_escape)
+            self.screen.backspaceSendsDelete(False)
+            self.screen.followBackspaceWithNewline(False)
+            # Define a string to send if F2 key is pressed.
+            self.screen.fancykeymap[Qt.Key_F2] = 'ABGPLOT,OBEY=APLOT,GET=Y.\r'
+            self.screen.set_terminate_char(20) # Ctrl-T
+            self.screen.set_local_recall(True)
+        elif imode == 2:
+            # VMS mode.
+            self.screen.fancykeymap.clear()
+            self.screen.clearEscapeProcessors()
+            self.screen.setEscapeProcessFunc(chr(0x1b),ansi_escape)
+            self.screen.backspaceSendsDelete(True)
+            self.screen.followBackspaceWithNewline(False)
+            # Define a string to send if F1 key is pressed.
+            self.screen.fancykeymap[Qt.Key_F1] = 'set term/echo/unknown\r'
+            # Define strings for the arrow keys (VT100 strings)
+            self.set_arrow_keys()
+            self.screen.set_terminate_char(25) # Ctrl-Y
+            self.screen.set_local_recall(False)
+        elif imode == 3:
+            # Unix mode.
+            self.screen.fancykeymap.clear()
+            self.screen.clearEscapeProcessors()
+            self.screen.setEscapeProcessFunc(chr(0x1b),ansi_escape)
+            self.screen.backspaceSendsDelete(True)
+            self.screen.followBackspaceWithNewline(False)
+            # Define strings for the arrow keys (VT100 strings)
+            self.set_arrow_keys()
+            self.screen.set_terminate_char(3) # Ctrl-C
+            self.screen.set_local_recall(False)
+        elif imode == 4:
+            # Unix mode / Alt graphics.
+            self.screen.fancykeymap.clear()
+            self.screen.clearEscapeProcessors()
+            self.screen.setEscapeProcessFunc(chr(0x1b),ansi_escape)
+            self.screen.setEscapeProcessFunc('@',cyber_apl_graphics_escape)
+            self.screen.backspaceSendsDelete(True)
+            self.screen.followBackspaceWithNewline(False)
+            # Define strings for the arrow keys (VT100 strings)
+            self.set_arrow_keys()
+            self.screen.set_terminate_char(3) # Ctrl-C
+            self.screen.set_local_recall(False)
+        elif imode == 5:
+            # Windows mode.
+            self.screen.fancykeymap.clear()
+            self.screen.clearEscapeProcessors()
+            self.screen.setEscapeProcessFunc(chr(0x1b),ansi_escape)
+            self.screen.backspaceSendsDelete(False)
+            self.screen.followBackspaceWithNewline(False)
+            # Define strings for the arrow keys (VT100 strings)
+            self.set_arrow_keys()
+            self.screen.set_terminate_char(3) # Ctrl-C
+            self.screen.set_local_recall(False)
+
+    def view(self,iview):
+        """
+        View text or graphics.
+        """
+        if iview == 0:
+            self.screen.viewText()
+        elif iview == 1:
+            self.screen.viewGraphics()
+
+    def guide(self,iguide):
+        """
+        Show a horizontal position guide. Or not.
+        """
+        guides = [ [], [6,72,80] ] # None, Fortran, ...
+        try:
+            guide_pos = guides[iguide]
+        except:
+            guide_pos = []
+        self.screen.set_horizontal_guide( guide_pos )
+
+    def showstatus(self):
+        """
+        Show status dialog.
+        """
+        sp3 = '&nbsp;&nbsp;&nbsp;'
+        sp6 = sp3 + sp3
+        fancykeynames = {Qt.Key_F1:'F1',Qt.Key_F2:'F2',Qt.Key_F3:'F3',Qt.Key_F4:'F4',
+                         Qt.Key_F5:'F5',Qt.Key_F6:'F6',Qt.Key_F7:'F7',Qt.Key_F8:'F8',
+                         Qt.Key_F9:'F9',Qt.Key_F10:'F10',Qt.Key_F11:'F11',Qt.Key_F12:'F12',
+                         Qt.Key_F13:'F13',Qt.Key_F14:'F14',Qt.Key_F15:'F15',Qt.Key_F16:'F16',
+                         Qt.Key_Up:'Up Arrow',Qt.Key_Down:'Down Arrow',
+                         Qt.Key_Left:'Left Arrow',Qt.Key_Right:'Right Arrow'}
+        smsg = "<font color=red size=14><b>GTerm Status Information:</b></font><br>"
+        smsg += "{0}<b>Version information:</b><br>".format(sp3)
+        smsg += "{0}Version: {1}<br>".format(sp6,_current_git_desc)
+        #smsg += "{0}Git HEAD: {1}<br>".format(sp6,_current_git_hash)
+        try:
+            buildtime = time.ctime(os.path.getmtime(__file__))
+            smsg += "{0}GTerm script (apparently) last modified: {1}<br>".format(sp6,buildtime)
+        except:
+            pass
+        smsg += "{0}Author: Nick Glazzard (nick@hccc.org.uk)<br>".format(sp6)
+        smsg += "{0}<b>Window Geometry:</b><br>".format(sp3)
+        widthchars = int((self.screen.viewport[0]-self.screen.xmargin)/self.screen.charspace)
+        heightchars = int((self.screen.viewport[1]-self.screen.ymargin)/self.screen.linespace)
+        smsg += "{0}Width = {1} pixels, {3} chars, Height = {2} pixels, {4} lines.<br>".\
+            format(sp6,self.screen.width_pixels,self.screen.height_pixels,widthchars,heightchars)
+        smsg += "{0}Aspect ratio = {1}<br>".format(sp6,self.screen.aspect)
+        smsg += "{0}<b>Configuration files:</b><br>".format(sp3)
+        smsg += "{0}Character texture map: {1} (.jsn/.png)<br>".format(sp6,self.screen.save_charsetname)
+        smsg += "{0}Virtual keyboard map: {1} (.jsn/.png)<br>".format(sp6,self.screen.save_vkbname)
+        smsg += "{0}Unicode log file map: {1} (.jsn)<br>".format(sp6,self.screen.save_umapname)
+        smsg += "{0}Bell sound WAV file: {1}<br>".format(sp6,self.screen.bell_wav)
+        smsg += "{0}<b>Modifier states:</b><br>".format(sp3)
+        smsg += "{0}Shift: {1}, ShiftLock: {2}, Control: {3}, Alt: {4}<br>".\
+            format(sp6,yns(self.screen.shift),yns(self.screen.shiftlock),yns(self.screen.ctrl),yns(self.screen.alt))
+        smsg += "{0}<b>Terminate character: {1}</b><br>".format(sp3,dumpChar(chr(self.screen.terminate_char)))
+        smsg += "{0}<b>Number of fancy keys defined: {1}</b><br>".format(sp3,len(self.screen.fancykeymap))
+        if len(self.screen.fancykeymap) > 0:
+            for k in list(self.screen.fancykeymap.keys()):
+                try:
+                    kname = fancykeynames[k]
+                except:
+                    kname = 'Unknown'
+                smsg += "{0}Key:{1} = {2}<br>".format(sp6,kname,dumpString(self.screen.fancykeymap[k]))
+        smsg += "{0}<b>Number of escape processors defined: {1}</b><br>"\
+            .format(sp3,len(self.screen.escapeProcessFuncList))
+        if len(self.screen.escapeProcessFuncList) > 0:
+            for i in range(0,len(self.screen.escapeProcessFuncList)):
+                (ec,epf) = self.screen.escapeProcessFuncList[i]
+                smsg += "{0}{1}: {2}<br>".format(sp6,i+1,epf.__name__)
+        smsg += "{0}<b>Number of incoming single character mappings defined: {1}</b><br>"\
+            .format(sp3,len(self.screen.incharmap))
+        if len(self.screen.incharmap) > 0:
+            i = 1
+            for k in list(self.screen.incharmap.keys()):
+                smsg += "{0}{1}: {2} -> {3}<br>"\
+                    .format(sp6,i,dumpChar(chr(k),True),dumpChar(chr(self.screen.incharmap[k]),True))
+                i += 1
+        smsg += "{0}<b>Number of outgoing single character mappings defined: {1}</b><br>"\
+            .format(sp3,len(self.screen.outcharmap))
+        if len(self.screen.outcharmap) > 0:
+            i = 1
+            for k in list(self.screen.outcharmap.keys()):
+                smsg += "{0}{1}: {2} -> {3}<br>"\
+                    .format(sp6,i,dumpChar(chr(k),True),dumpChar(chr(self.screen.outcharmap[k]),True))
+                i += 1
+        if self.screen.char_to_string_map == None:
+            ncsm = 0
+        else:
+            ncsm = len(self.screen.char_to_string_map)
+        smsg += "{0}<b>Number of character to string mappings: {1}</b><br>"\
+            .format(sp3,ncsm)
+        smsg += "{0}<b>Telnet connection: {1}</b><br>".format(sp3,yns(self.screen.haveconnection))
+        if self.screen.haveconnection:
+            smsg += "{0}Connected since: {1}<br>".format(sp6,self.screen.connect_time)
+        smsg += "{0}<b>Text plane state:</b><br>".format(sp3)
+        smsg += "{0}Maximum buffer size = {1} lines.<br>".format(sp6,self.screen.maxlines)
+        smsg += "{0}Number of lines currently in buffer = {1}<br>".format(sp6,len(self.screen.screen))
+        smsg += "{0}Visible region scroll = {1} lines<br>".format(sp6,self.screen.scroll)
+        smsg += "{0}<b>Graphics plane state:</b><br>".format(sp3)
+        smsg += "{0}Commands in graphics buffer = {1}<br>".format(sp6,self.screen.gcbcmds)
+        smsg += "{0}<b>Paste buffer contents:</b><br>".format(sp3)
+        smsg += "<pre>"
+        smsg += self.screen.paste_buffer
+        smsg += "</pre>\n"
+
+        # Display it. Use a label in a scrollable area.
+        self.statLabel = QLabel(smsg)
+        self.scrollArea = QScrollArea()
+        self.scrollArea.setGeometry(QRect(10,10,550,650))
+        self.scrollArea.setWidgetResizable(True)
+        self.scrollArea.setWindowTitle("GTerm Help and Status")
+        self.scrollAreaWidgetContents = QWidget()
+        self.scrollAreaWidgetContents.setGeometry(QRect(10,10,550,650))
+        self.scrollArea.setWidget(self.statLabel)
+        self.scrollArea.show()
+
+    def closeEvent(self, event):
+        """
+        Intercept close program event.
+        """
+        quit_msg = "Exit GTerm?"
+        reply = QMessageBox.question(self, 'GTerm Exit Warning', quit_msg, QMessageBox.Yes, QMessageBox.No)
+        if reply == QMessageBox.Yes:
+            # If there is an open connection, close it so the server end disconnects.
+            # The read input thread is still running and will not like this, but ...
+            if self.screen.haveconnection:
+                try:
+                    self.screen.telnet.close()
+                except:
+                    pass
+            event.accept()
+        else:
+            event.ignore()
+
+def main():
+    """
+    Main line
+    """
+    #print('Main thread id = ', threading.get_ident())
     app = QApplication(["GTerm: Glass Teletype with Graphics!"])
     dialog = TerminalDialog()
     dialog.setlogdir("/tmp") #os.path.join(os.getcwd(),"LogFiles"))
     dialog.show()
-    app.exec_()
+    app.exec()
+
+if __name__ == "__main__":
+    main()
+

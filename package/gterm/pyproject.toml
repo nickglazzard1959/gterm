@@ -1,0 +1,53 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "gterm"
+version = "0.8.0"
+description = "Graphics and APL terminal primarily for NOS 2 on CDC Cybers"
+readme = "README.md"
+requires-python = ">=3.9"
+keywords = ["gterm", "retrocomputing"]
+license = {file = "LICENSE"}
+
+authors = [
+{name = "Nick Glazzard", email = "nick@hccc.org.uk"}
+]
+
+maintainers = [
+{name = "Nick Glazzard", email = "nick@hccc.org.uk"}
+]
+
+classifiers = ["Development Status :: 4 - Beta",
+               "Intended Audience :: Science/Research",
+               "License :: OSI Approved :: MIT License",
+               "Operating System :: POSIX :: Linux",
+               "Operating System :: MacOS :: MacOS X",
+               "Programming Language :: Python :: 3",
+               "Programming Language :: APL"
+              ]
+
+dependencies = ['PyOpenGL',
+                'PySide6',
+                'Pillow',
+                'Numpy',
+                'pycairo==1.16.0',
+                'clipman',
+                'pyaudio'
+               ]
+
+[tool.setuptools]
+packages = ["gterm"]
+
+[tool.setuptools.package-data]
+gterm = ['aplvkb.jsn',
+         'aplvkb.png',
+         'mainfonttexture.jsn',
+         'mainfonttexture.png',
+         'mainfontunicode.jsn',
+         'kling.wav',
+         'beep-3.wav',
+         'gterm.png',
+         'gtermicon.png'
+        ]
