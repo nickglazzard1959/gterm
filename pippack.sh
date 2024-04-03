@@ -1,6 +1,7 @@
 #! /usr/bin/bash
 mkdir -p package/gterm/gterm
 cp gterm.py package/gterm/gterm
+cp main.py package/gterm/gterm
 cp gterm.png package/gterm/gterm
 cp gtermicon.png package/gterm/gterm
 cp aplvkb.jsn package/gterm/gterm
@@ -13,5 +14,8 @@ cp beep-3.wav package/gterm/gterm
 cd package/gterm
 #pip install --verbose .
 rm -rf build gterm.egg-info
+cd gterm
 rm -f *~
+cd ../..
+rm -f gterm.zip
 zip -r -v gterm.zip gterm

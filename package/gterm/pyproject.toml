@@ -37,6 +37,9 @@ dependencies = ['PyOpenGL',
                 'pyaudio'
                ]
 
+[project.scripts]
+gterm = "gterm.gterm:main"
+
 [tool.setuptools]
 packages = ["gterm"]
 
