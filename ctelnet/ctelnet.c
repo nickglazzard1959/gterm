@@ -1,5 +1,5 @@
 /* http://l3net.wordpress.com/2012/12/09/a-simple-telnet-client/ */
-// Considerably modified bu Nick Glazzard, 2019.
+// Considerably modified by Nick Glazzard, 2019.
 
 #include <stdio.h>
 #include <stdlib.h>

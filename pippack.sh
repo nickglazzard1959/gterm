@@ -12,7 +12,7 @@ cp mainfontunicode.jsn package/gterm/gterm
 cp kling.wav package/gterm/gterm
 cp beep-3.wav package/gterm/gterm
 cd package/gterm
-#pip install --verbose .
+pip install .
 rm -rf build gterm.egg-info
 cd gterm
 rm -f *~
