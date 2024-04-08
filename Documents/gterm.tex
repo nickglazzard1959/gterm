@@ -281,20 +281,20 @@ There are, however, the following potentially useful features:
 \item Similarly, incoming characters or strings can be translated to character codes.
 \item All drawing is done by Cairo with decent anti-aliasing. Prior to V0.4, it was done primarily by
 	OpenGL with Cairo doing optional anti-aliased drawing. The anti-aliasing was always used in practice, though,
-	and dropping OpenGL became an obvious simplification.
+	and dropping OpenGL for graphics display became an obvious simplification.
 \item All input/output is logged to a Unicode text log file. Internal character codes can be associated
       with any Unicode code point.
 \item Graphics data can be saved to file in SVG format. 
-\item As of version 0.4, command line recall and editing is built in to \textbf{GTerm}, providing this for systems and
+\item Command line recall and editing is built in to \textbf{GTerm}, providing this for systems and
 applications that otherwise would not have it. This includes CDC NOS APL (see below). 
-\item Also as of version 0.4, there is a very high level graphics facility (in addition to the original graphics
+\item A very high level graphics facility (in addition to the original graphics
 scheme) that can be used to plot graphs with almost all the work done by \textbf{GTerm}. Again, this is to support
 the use of APL.
 \end{itemize}
 This may seem like a very strange project (and it is!). There is some method in the madness, though.
 \textbfc{It was primarily written to serve
-as an `application terminal' for an emulated mainframe environment (CDC Cyber 175 running NOS 2.8)}.
-Two things were needed for this (beyond the basics!):
+as an `application terminal' for an emulated mainframe environment (CDC Cyber machines running NOS 2.8)}.
+Two things were needed for this (beyond the basics):
 \begin{itemize}
 \item \textbfc{Provide a way of displaying colour vector graphics}.
 \item \textbfc{Provide a way of using the APL character set with NOS APL 2.} This supports several APL terminals --
@@ -309,7 +309,7 @@ Unicode things, PyCairo, Telnet in Python -- including not at all well documente
 so on. Having the Telnet communications and all aspects of the terminal emulation available in the easily
 modifiable source code form of a Python program allows for very great flexibility. Just about anything could
 be added if desired, and many things that would be tedious configuration files can just be changed in the source.
-(I realize that way of doing things may not be approved of by some! But I like it.)
+(I realize that way of doing things may not be approved of by some, but I like it.)
 \newpara
 Were there simpler ways of accomplishing the goals than writing \textbf{GTerm}? Well -- it might have been possible to
 modify xterm \ldots but I'm not sure that would have been the better alternative. In fact, I'm pretty sure it wouldn't
@@ -317,7 +317,7 @@ have been. Apart from that, there really didn't seem to be anything beyond xterm
 as graphics went. That is fine -- but it is monochrome and the lines are not anti-aliased. There don't seem to be
 any other `graphics terminal' emulators out there\footnote{As of mid-2019, this is no longer true.
 Rene Richarz has an excellent Tektronix 4014 emulator which reproduces the experience of using that
-device superbly well. It is compact, clean, self contained, C code. It also includes APL (4015) emulation!
+device superbly well. It is compact, clean, self contained, C code. It also includes APL (4015) emulation.
 \url{https://github.com/rricharz/Tek4010}}. Perhaps not surprising at this point in time.
 As for using NOS APL 2 batch character codes -- obviously I was going to have to deal with that
 myself somehow.
@@ -325,7 +325,7 @@ myself somehow.
 On the other hand, I knew very little about how much support now exists for Unicode before starting this project.
 There is actually a very great deal -- native English speakers probably know a lot less about this than other people.
 A full set of APL characters is in Unicode -- although not in any very sensible order as far as I can see. The
-internal character codes I chose for these and other characters are totally arbitrary. I could have made a much
+internal character codes I chose for these and other characters are totally arbitrary. I could perhaps have made a
 better attempt at relating these to standards for APL characters and to Unicode. There is some more information
 on these matters in Section \ref{aplinfo}.
 \newpara
@@ -333,65 +333,26 @@ The first version of \textbf{GTerm} was completed in December 2013. The second v
 simple installer, obviating the need to install many pre-requisites if modification of the source is not required.
 That version was completed in December 2014. Some modifications were made in March 2017 for PyQt 5 compatibility.
 Better backspace handling for APL was added in April 2019, followed by extensive changes for line recall and editing
-as well as the `new graphics commands' in May 2019.
-
-\section{Binary Installation on Mac OS X}
-If no modifications to the source are to be made, there is a drag-and-drop installer for a binary version
-of \textbf{GTerm} on Mac OS X. The binary version is generated from the Python source with PyInstaller, but the
-end result is pretty much identical to a `normal' Mac OS X `app'.\footnote{The only difference as far as a user
-is concerned is that  two instances of \textbf{GTerm} will appear in the Activity Monitor, one of which will be marked
-as `not responding'. PyInstaller binaries package everything required to run an application in a single file -- at
-least, this is the option we use here -- and when the application is run, a bootstrap program executes which
-unpacks the real program (together with all the files it needs) and then runs that. 
-The bootstrap program has to hang around until the real program
-exits. This is the instance that is regarded (correctly) as `not responding'.}
+as well as the `new graphics commands' in May 2019. Graphics zoom was added in 2023 and text cut and paste in 2024.
 \newpara
-The binary \textbf{GTerm} for Mac OS X is supplied in a disk image file: \texttt{GTerm.dmg}. To install, double click
-on this file. A window should appear as shown in Figure \ref{fig:inst}.
-\begin{figure}
-	\centering
-		\includegraphics[width=\maxwidth]{installer.eps}
-	\caption{\textbf{GTerm} Binary Installer for Mac OS X}
-	\label{fig:inst}
-\end{figure}
+For several reasons, the binary installation options were dropped in 2024. This had been implemented using PyInstaller and
+worked quite well, but the security related behaviour of recent versions of MacOS X (now just macOS) made it much less
+appealing that it originally was. Unless binaries (including shared libraries) are signed (and perhaps more than this now),
+macOS will perform very time consuming checks (involving `phoning home' to Apple) when the application is run. These
+can take minutes to perform so there can be a long wait before \textbf{GTerm} actually appears!
 \newpara
-To install \textbf{GTerm}, simply drag the GTerm.app icon on to the Applications icon. Once installed, \textbf{GTerm} can be launched
-from Applications or Launchpad in the usual way.
+Consequently, GTerm is now supplied for installation with Python \textbf{pip}. In itself, is a pure Python program, so this is 
+a reasonable approach, but there are pre-requisites which seem to not be fully handled by \textbf{pip} and some binary
+components must be installed using the appropriate system package manager (or Homebrew on macOS).
 \newpara
-Much of the information below is not relevant to the binary version on Mac OS X. \textbf{GTerm} was originally developed
-on Ubuntu Linux and many of the details mentioned apply to that platform. \textbfc{Skipping to Section} \ref{useit} \textbfc{is recommended!}
-The location of files in the Mac OS X binary version is as follows:
-\begin{itemize}
-\item Host configuration file: \texttt{gtermhostinfo.txt} --- \texttt{/Applications/GTerm.app/Contents/MacOS/}
-\item Log files: \texttt{/tmp/gterm\_log\_yyyy\_mm\_dd\_hh\_mm\_ss.utxt}
-\end{itemize}
-
-\section{Pre-requisites on Ubuntu Linux or for modifying the source code}
-If \textbf{GTerm} is to be run on Ubuntu Linux, or if modifications are desired, the source code version must be installed.
-Unfortunately, \textbf{GTerm} has quite a lot of dependencies. The exact versions are specified, but (presumably!) are not critical.
-\begin{itemize}
-\item Ubuntu 12.04 or later. It has been tested on 12.04, 14.04 and 16.04.  Alternatively, Mac OS X 10.9.5 (Mavericks) or later
-	will also work. It will not work as it is on Windows due to the use of
-      \texttt{select()} on non-socket objects and the \texttt{termios} package. 
-       Porting to Windows may be possible but it is likely to involve significant pain (and I will not be doing it).
-       	Versions of Linux other than Ubuntu should work more or less painlessly, but you never know!
-\item Python 2.7 or later (but not 3.x). It has only been tested on 2.7.
-\item PyQt 5.
-\item PyOpenGL. (\texttt{python-opengl 3.0.1})
-\item NumPy. (\texttt{python-numpy 1:1.6.1-6})
-\item PyCairo (\texttt{libcairo2-dev} and \texttt{python-cairo 1.8.8} amongst other components). I believe that Ubuntu 12.04
-      and later (presumably) ship with the required Cairo components installed by default (it seemed so anyway).
-\item PyAudio. (\texttt{python-pyaudio} for PortAudio V19). This is used for the terminal bell! The sound can be any WAV file.
-\item Python Imaging Library (PIL) (\texttt{python-imaging 1.1.7-4}). This is needed to design new fonts.
-\item Inkscape Vector Graphics Editor (to design new fonts).
-\end{itemize}
-There may be others, but these are the major ones, I think.
+Please see the current \texttt{README.md} file for detailed installation instructions.
 
 \section{Source Components}
-The following files (all in the directory \texttt{gterm}) make up \textbf{GTerm}:
+This information may be useful to people wanting to modify \textbf{GTerm} or
+adapt it for other purposes. It is not necessary for using \textbf{GTerm}.
+The following files (all in the root directory of the cloned repository) make up \textbf{GTerm}:
 \begin{itemize}
-\item \texttt{gterm.py}: This is the terminal emulator. It can be run using \texttt{./gterm.py} or \texttt{python gterm.py} 
-      or via the Ubuntu Unity desktop (see below).
+\item \texttt{gterm.py}: This is the terminal emulator. It can be run using the command: \texttt{gterm} after installation.
 \item \texttt{gtermhostinfo.txt}: This is a list of `known hosts' which can be selected from a list in \textbf{GTerm}. The file
       specifies a name to be shown for the host in the list, the host name or IP address, the port number to use on the
       host and the host type (\texttt{nos, nosapl, vms, unix} or \texttt{windows}). 
@@ -423,29 +384,11 @@ The following files (all in the directory \texttt{gterm}) make up \textbf{GTerm}
       keyboard image, \texttt{aplvkb.png} from \texttt{aplvkb.jsn} and to create a new internal 
       character code to Unicode code point map,
       \texttt{mainfontunicode.jsn}, from \texttt{mainfontunicode.py}.
-\item \texttt{gterm.desktop}: The Ubuntu Unity desktop icon definition file to allow \textbf{GTerm} to be launched from Unity. This may
-      need to be edited to reflect where \textbf{GTerm} is `installed'.
 \item \texttt{gtermicon.png}: The icon image used in Unity.
 \item \texttt{trygraf.py}: An example class and test program for the graphics commands understood by \textbf{GTerm}.
       Other Python programs could use this to create graphical output to be displayed by \textbf{GTerm}.
-\item \texttt{Documents}: A directory containing the documentation for \textbf{GTerm} (this document!).
+\item \texttt{Documents}: A directory containing the documentation for \textbf{GTerm} (this document).
 \end{itemize}
-
-\section{Installing \textbf{GTerm} on Linux}
-Given the pre-requisites are in place on your system, simply copy the \texttt{gterm} directory to a convenient location.
-Then:
-\begin{itemize}
-\item Edit \texttt{gterm.desktop} to reflect the location of the \textbf{GTerm} directory on your system.
-\item \texttt{sudo cp gterm.desktop /usr/share/applications}
-\item Ensure that \texttt{gtermicon.png} is executable (I don't know why this is needed, but it seems it is).
-\end{itemize}
-That is it. After this, \textbf{GTerm} should be available in the Unity launcher as shown in Figure \ref{fig:gtermunity}.
-\begin{figure}
-	\centering
-		\includegraphics[width=0.4\maxwidth]{gterm-unity.eps}
-	\caption{\textbf{GTerm} in the Unity launcher}
-	\label{fig:gtermunity}
-\end{figure}
 
 \section{\textbf{GTerm} Controls}\label{useit}
 \textbf{GTerm} is shown in Figure \ref{fig:gtermss}. This shows the text display with the APL virtual keyboard being
@@ -531,15 +474,12 @@ The controls are as follows:
 \end{itemize} 
 
 \section{Using \textbf{GTerm}}
-On Mac OS X, \textbf{GTerm} will normally be started from the Applications folder or Launchpad in the usual way.
-\newpara
-On Ubuntu Linux,
-\textbf{GTerm} will usually be started from the Unity launcher as described above. If debug output is needed, it must be
-run from the command line. Either:\\
-\texttt{\$ ./gterm.py}\\
-or\\
-\texttt{\$python gterm.py}\\
-will suffice for this.
+After installation, \textbf{GTerm} can be run with the following command from a terminal window (multiple \textbf{GTerm}s
+can be run simultaneously):
+\begin{lstlisting}
+$ gterm
+\end{lstlisting}
+
 \newpara
 \textbf{GTerm} may be in one of four states which are shown by the colour of the background of the text window:
 \begin{itemize}
@@ -562,9 +502,15 @@ stored so far will be shown in the top right of the text display. E.g. \texttt{G
 Switching to the graphics display will show what has been drawn (so far). If no graphics commands have been
 received, the graphics display will show: \texttt{No graphics data}.
 \newpara
-There are no facilities for selecting text with a mouse, etc. However, the session log (which is always
+Selecting text can be done with the mouse, by left clicking and dragging. The characters in the 2D region so selected
+will be copied to the window system clipboard.  
+\newpara
+Additionally, the session log (which is always
 automatically created when a connection to a host is made) contains all output from the host and all input
 typed by the user.
+\newpara
+The first line of any text in the window system clipboard can be pasted into the input line using \texttt{ALT-V} -- not
+\texttt{CTRL-V}, as that is a valid character that could be sent to the host.
 \newpara
 If a virtual keyboard is displayed, left clicking on a `key' will enter the associated character.
 Right clicking on a `key' will display the `tool tip' help for that `key'. This might explain what
@@ -577,7 +523,7 @@ the workspace switching sequence.
 Unfortunately, I have not found a way to reliably
 track the \texttt{Ctrl} and \texttt{Alt} keys when switching workspaces with \texttt{Ctrl+Alt+ArrowKey}.
 \newpara
-Unfortunately, there is no reasonable way to determine the \texttt{CapsLock} key \textit{state}
+Also unfortunately, there is no reasonable way to determine the \texttt{CapsLock} key \textit{state}
 in Qt. There are some awful hacks which try to find the X server LED states (which is possible) to
 get the \texttt{CapsLock} key state, but that is both horrible and messy. 
 \texttt{CapsLock} \textit{events} are handled correctly,
@@ -607,6 +553,7 @@ PgDn  & Same as D.\\
 H  & Turn off any scrolling.\\
 Home & As H, and reset modifiers (see above). \\
 A  & Toggle graphics anti-aliasing on and off.\\
+V & Paste printable characters from the first line of any clipboard contents.\\
 \hline
 \end{tabular}
 \caption{Hot Keys}
@@ -614,10 +561,10 @@ A  & Toggle graphics anti-aliasing on and off.\\
 \end{table}
 
 \newpara
-As of V0.4, scrolling in the text plane is controlled with the mouse wheel (or equivalent). 
+Scrolling in the text plane is controlled with the mouse wheel (or equivalent). The scroll back buffer is 1040 lines.
 
 \subsection{Command line editing}
-The arrow keys (as of V0.4) are used to perform local command line editing. A buffer of lines input by the user
+The arrow keys are used to perform local command line editing. A buffer of lines input by the user
 and terminated by \texttt{(return)} is maintained inside \textbf{GTerm}. These may or may not be `commands', but they will be
 a superset of them (there is, of course, no way \textbf{GTerm} can tell the difference between commands to the operating system,
 commands (etc.) to applications and data entry). The actual implementation of line editing is pretty tortuous, but it 
@@ -645,7 +592,8 @@ The \texttt{(return)} key sends the edited (or simply recalled) line to the host
 Note that command line editing works with APL characters as well as `normal' characters.
 
 \section{Modifying \textbf{GTerm}}
-The source code version of \textbf{GTerm} must be installed to make any changes, obviously!
+As a Python package, all the source of \textbf{GTerm} is available for modification. Although there are other
+options, simply modifying the cloned source and re-installing is one easy way to go.
 \newpara
 It is possible to change the glyphs shown for any 7-bit character code by modifying the contents of
 \texttt{mainfont.svg}. The locations for each character code are clearly marked with red lines and 
@@ -755,7 +703,7 @@ Circle & \texttt{@[F x y r @}         & \footnotesize{Draw a circle at \texttt{(
 \end{table}
 
 \newpara
-As of V0.4, these original graphics commands have been augmented with a `higher level' set of
+These original graphics commands were later augmented with a `higher level' set of
 commands. These use floating point numbers in the data stream with the idea of moving almost all
 of the graphics from the host to \textbf{GTerm}.  They also replace the non-printing escape
 character with the \texttt{@} character. These commands are shown in Table~\ref{tab:graphicscmds2}.
@@ -1020,7 +968,7 @@ APL characters are input using the virtual keyboard facility and shown in the di
 use Unicode representations of these characters, using the Unicode code points defined in the
 ISO-IEC/JTC1/SC22 N 3067 "APL Character Repertoire" standard.
 \newpara
-Many (most?) tools for text editing and display on Ubuntu just work with these Unicode log
+Many tools for text editing and display on Linux and macOS `just work' with these Unicode log
 files without any special action being required. Unfortunately, this is \textit{not} true of \LaTeX\ .
 In order to correctly typeset APL source code cut out of log files, the following is needed:
 \begin{itemize}
@@ -1151,14 +1099,12 @@ Symbol&I-Code&Meaning&U-Code&B-Code\\
 \newpara
 Personally speaking, I think there are better (nicer looking) Unicode characters that match the APL symbols than the
 ones defined in the standard and implemented in APL385, but there it is. Other APLs require more symbols, I
-believe (and more could be defined for NOS APL2, such as underlined characters and so on). Frankly, though,
-\textit{enough is enough!} Although I think it is (just about) worth going to all this trouble to use APL as intended, 
+believe (and more could be defined for NOS APL2, such as underlined characters and so on). 
+Although I think it is worth going to all this trouble to use APL as intended, 
 I can quite
 see how the character set requirements were 
-a major obstacle to APL adoption (and still are, I suspect), and could put a lot of people off!
-No wonder J gave up on them and went back to using ASCII. (Although I do think they have real
-value once you get to know them --- it's just
-the practicalities of using them are daunting, even today).
+a major obstacle to APL adoption.
+The practicalities of using them can be somewhat daunting, even today.
 \newpara
 In these tables, I-code is the code number used internally in \textbf{GTerm} for the character,
 U-code is the Unicode code point (note how they are scattered all over the place!),
@@ -1169,7 +1115,8 @@ B-codes are what \textbf{GTerm} sends to the mainframe when an APL character is 
 mainframe sends back to \textbf{GTerm} to display an APL character.
 
 \subsection{APL and graphics}
-Prior to V0.4, the best that could be done was to write out \textbf{GPLOT} commands to a file and have \textbf{GPLOT} read that
+Prior to \textbf{GTerm} V0.4, the best that could 
+be done was to write out \textbf{GPLOT} commands to a file and have \textbf{GPLOT} read that
 file to draw graphs. The new graphics commands make it feasible to output graphics directly from APL.
 The details remain under development, but the current version is in workspace \texttt{WSGRAF3}, which provides
 the following functions:
@@ -1247,10 +1194,5 @@ The space separated fields are:
 \end{itemize}
 
 \newpara
-The \texttt{gtermhostinfo.txt} file lives in:
-\begin{itemize}
-\item MacOS (binary installation) : \texttt{/Applications/GTerm.app/Contents/MacOS}
-\item Linux or source installations : The current directory when \texttt{gterm.py} is run.
-\end{itemize}
-
+The \texttt{gtermhostinfo.txt} file lives in the user's home directory.
 \end{document}
