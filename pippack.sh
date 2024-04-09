@@ -2,6 +2,8 @@
 rm -rf package/gterm/gterm
 mkdir -p package/gterm/gterm
 #
+cp README.md package/gterm
+#
 cp gterm.py package/gterm/gterm
 cp main.py package/gterm/gterm
 cp __main__.py package/gterm/gterm
