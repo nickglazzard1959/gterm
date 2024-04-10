@@ -1,15 +1,19 @@
 /* http://l3net.wordpress.com/2012/12/09/a-simple-telnet-client/ */
-// Considerably modified by Nick Glazzard, 2019.
+// Considerably modified by Nick Glazzard, 2019,2021.
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
+#include <sys/socket.h>
 #include <arpa/inet.h>
+#include <netinet/in.h>
+#include <netdb.h>
 #include <termios.h>
 #include <fcntl.h>
 #include <stdarg.h>
 #include <time.h>
+#include <ctype.h>
 
 // Defines
  
@@ -31,6 +35,7 @@ static int send_cr_after_lf = 0;      ///< Send CR to host after sending LF. Use
 static int show_lf_after_newline = 0; ///< Send LF to terminal after CR from terminal.
 static int bytes_in=0;                ///< Bytes received from host.
 static int bytes_out=0;               ///< Bytes sent to host.
+static int slow_pause=0;              ///< Wait this many seconds after sending a newline.
 static char* asciimap[] =             ///< ASCII byte values to string for log file.
   {
     "NUL", "SOH", "STX", "ETX", "EOT", "ENQ", "ACK", "BEL",
@@ -179,6 +184,7 @@ static int send_buf( int sock, unsigned char* buf, int n_send )
 
   // Record if it is a newline (LF) character (from return key usually).
   int is_newline = (buf[0] == '\n');
+  int is_cr = (buf[0] == '\r');
 
   // Apply any character transformations here.
   // \r -> CR LF.
@@ -206,8 +212,37 @@ static int send_buf( int sock, unsigned char* buf, int n_send )
   if( show_lf_after_newline && is_newline ){
     putchar('\r');
   }
+
+  // Wait after sending a newline if desired.
+  if( slow_pause > 0 && is_newline )
+    sleep(slow_pause);
   
   return 0;
+}
+
+int hostname_to_ip( char* hostname, char* ip )
+//--------------------------------------------
+/// @brief Convert a host name string to an IP V4 address as a string containing dotted decimal format address.
+///
+/// @param hostname Name of host.
+/// @param ip IP V4 address of host as a string containing dotted decimal format address.
+/// @return 0 if OK or 1 on error.
+{
+  struct hostent *he;
+  struct in_addr **addr_list;
+  int i;
+		
+  if ( (he = gethostbyname( hostname ) ) == NULL)
+    return 1;
+
+  addr_list = (struct in_addr **) he->h_addr_list;
+	
+  for( i=0; addr_list[i] != NULL; i++ ){
+    strncpy(ip, inet_ntoa(*addr_list[i]), 20);
+    return 0;
+  }
+  
+  return 1;
 }
  
 int main(int argc , char *argv[])
@@ -225,16 +260,27 @@ int main(int argc , char *argv[])
   int port;
   int ia;
   ssize_t n_send = 0;
+  char* host_dotted = NULL;
+  char ip_from_hostname[20];
 
-  printf( "\nCTELNET: Minimal telnet client V0.1.\n" );
+  printf( "\nCTELNET: Minimal telnet client V0.2.\n" );
     
   // Parse command line.
   if( argc < 3 ){
-    printf("ERROR: Usage: %s address port [--crlf --cr_after_lf --lfafternl --log]\n", argv[0]);
-    logit("ERROR: Usage.\n", argv[0]);
+    fprintf(stderr, "ERROR: Usage: %s address port [--crlf --cr_after_lf --lfafternl --log --slow]\n", argv[0]);
     return 1;
   }
+  host_dotted = argv[1];
   port = atoi(argv[2]);
+
+  // If host_dotted doesn't look like an IP address, treat it as a host name.
+  if( ! isdigit(host_dotted[0]) ){
+    if( hostname_to_ip( host_dotted, ip_from_hostname ) != 0 ){
+      fprintf(stderr, "ERROR: Failed to convert host name to IP address.\n");
+      return 33;
+    }
+    host_dotted = ip_from_hostname;
+  }
 
   for( ia=3; ia<argc; ia++ ){
     if( !strcmp( argv[ia], "--crlf" ) ){
@@ -263,6 +309,9 @@ int main(int argc , char *argv[])
         return 1;
       }
     }
+    else if( !strcmp( argv[ia], "--slow" ) ){
+      slow_pause = 5;
+    }
     else{
       fprintf( stderr, "WARNING: Unknown option: %s (ignored)\n", argv[ia]);
     }
@@ -276,12 +325,12 @@ int main(int argc , char *argv[])
     return 1;
   }
  
-  server.sin_addr.s_addr = inet_addr(argv[1]);
+  server.sin_addr.s_addr = inet_addr(host_dotted);
   server.sin_family = AF_INET;
   server.sin_port = htons(port);
  
   // Connect to host.
-  if (connect(sock , (struct sockaddr *)&server , sizeof(server)) < 0) {
+  if (connect(sock, (struct sockaddr *)&server , sizeof(server)) < 0) {
     perror("ERROR: Could not connect().");
     logit("ERROR: Failed to connect().\n");
     return 1;

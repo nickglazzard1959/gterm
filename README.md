@@ -50,6 +50,7 @@ Installation on Debian/Ubuntu Linux
 
 For a completely "empty" machine:
 
+1. Install system wide binary pre-requisites.
 - python3 --version (note version, must be 3.10 or newer)
 - sudo apt install python3-pip
 - sudo apt install python3.xx-venv (replace xx with version)
@@ -57,21 +58,39 @@ For a completely "empty" machine:
 - sudo apt install python-all-dev
 - sudo apt install pkg-config
 - sudo apt install libcairo2-dev
+
+2. Create a Python virtual environment for running GTerm.
 - python3 -m venv ~/gtermenv
 - source ~/gtermenv/bin/activate
 - python -m pip install --upgrade pip
-- git clone ...
-- bash pippack.sh
 
-This will install GTerm and also create a ZIP file, gterm.zip,
-in the `package` subdirectory, which can also be used for
-installation using: `pip install gterm.zip`
+3. Install GTerm in that virtual environment.
+- pip install .
 
 The number of binary packages that must be installed by APT is
 disappointing, but PyCairo and PyAudio wheels are not
 "self contained". This can cause version mismatch problems
 between the binary libraries and the Python components, but
 that is how it is.
+
+Installation on macOS
+---------------------
+
+For a completely empty machine but with Homebrew already installed:
+
+1. Install binary pre-requisites.
+- brew install portaudio
+- brew install pkg-config
+- brew install cairo
+
+
+2. Create a Python virtual environment for running GTerm.
+- python3 -m venv ~/gtermenv
+- source ~/gtermenv/bin/activate
+- python -m pip install --upgrade pip
+
+3. Install GTerm in that virtual environment.
+- pip install .
 
 Running
 -------
@@ -112,3 +131,40 @@ The allowed system type values are:
 Extras
 ------
 
+Two directories contain things related to GTerm.
+
+The tools directory contains programs useful for modifying GTerm
+for other purposes. See the documentation in the Documents
+subdirectory for more information.
+
+The ctelnet directory contains a very barebones telnet client that
+does all that needs to be done for retrocomputing applications. The
+telnet client supplied with modern systems (if any) has many complex
+features that are really not needed for talking to simulators over
+a LAN. It also has tricky configuration files and is often buggy
+as telnet clients are very low priority and frowned on for
+security reasons.
+
+The ctelnet program is intended for use with terminal emulators other than
+GTerm (which has a telnet client built in) such as XTerm or iTerm2.
+It is simple enough to build on any Linux or macOS system using the
+build.sh script.
+```
+ctelnet hostname_or_IP port_number
+```
+will connect to a telnet server on a host at a given port. There
+are other options, but they are not normally needed. When starting
+a terminal emulator, ctelnet should be given as the command for
+the emulator to execute.
+
+The ctelnet program can be built using the script `build.sh`.
+
+Documentation
+-------------
+
+The main GTerm documentation is the PDF file: `gterm.pdf` in
+the `Documentation` subdirectory.
+
+This can be rebuilt from LaTeX source using the `build.sh` script
+in that directory. A complete TeX/LaTeX installation must be present
+to do this though.
