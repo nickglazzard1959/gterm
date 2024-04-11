@@ -1,8 +1,8 @@
 """ Make a virtual keyboard image from a JSON format virtual keyboard
     definition file. The definition file must be created by hand."""
 
-import Image
-import ImageDraw
+from PIL import Image
+from PIL import ImageDraw
 import json
 import optparse
 import sys
@@ -36,35 +36,35 @@ try:
         vkb_keyxdelta = input_keydata['keyxdelta']
         vkb_keyydelta = input_keydata['keyydelta']
 except:
-    print '**** Failed to read virtual keyboard definition file. Giving up!'
+    print('**** Failed to read virtual keyboard definition file:', options.definitions, 'Giving up!')
     sys.exit(1)
 
 # Open an output image.
 image_width = vkb_keycols * vkb_keyxdelta
 image_height = vkb_keyrows * vkb_keyydelta
-print 'Result image size will be:',image_width,'X',image_height
+print('Result image size will be:',image_width,'X',image_height)
 nkeys = vkb_keycols * vkb_keyrows
 if nkeys != len(vkb_keymap):
-    print '**** Number of keys:',nkeys,'inconsistent with keymap length.',len(vkb_keymap),'Giving up!'
+    print('**** Number of keys:',nkeys,'inconsistent with keymap length.',len(vkb_keymap),'Giving up!')
 outimage = Image.new('L',(image_width,image_height),230)
 
 # For every key, composite the right key image in to the correct
 # key position.
 for ikey in range(0,len(vkb_keymap)):
     xloc = ikey % vkb_keycols
-    yloc = ikey / vkb_keycols
+    yloc = ikey // vkb_keycols
     (charcode,keydesc) = vkb_keymap[ikey]
     cellimagename = options.cellstem + '{0:03d}.png'.format(charcode)
-    print xloc, yloc, charcode, cellimagename
+    print(xloc, yloc, charcode, cellimagename)
     inimage = Image.open(cellimagename)
     insize = inimage.size
     inasprat = float(insize[0])/float(insize[1])
     ymargin = 5
     margin_keyydelta = vkb_keyydelta - (2*ymargin)
     pastesize = (int(margin_keyydelta*inasprat),margin_keyydelta)
-    sizedinimage = inimage.resize(pastesize,Image.ANTIALIAS)
+    sizedinimage = inimage.resize(pastesize,Image.LANCZOS)
     colsizedinimage = Image.eval(sizedinimage,lambda p:min(255-p,230))
-    xoffset = ( vkb_keyxdelta - pastesize[0] ) / 2 + 2
+    xoffset = ( vkb_keyxdelta - pastesize[0] ) // 2 + 2
     yoffset = 2
     outimage.paste(colsizedinimage,(xloc*vkb_keyxdelta+xoffset,yloc*vkb_keyydelta+ymargin+yoffset))
 
@@ -81,4 +81,4 @@ for ypos in range(0,image_height,vkb_keyydelta):
 draw.line([(0,image_height-2),(image_width-1,image_height-2)])
 draw.line([(0,image_height-1),(image_width-1,image_height-1)])
 outimage.save(options.outimage)
-print "Wrote:",options.outimage
+print("Wrote:",options.outimage)

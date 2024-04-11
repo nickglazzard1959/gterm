@@ -6,11 +6,12 @@
    <outstem>.jsn : Character metrics & texture coordinates dictionary in JSON format.
    <outstem>.png " Font texture map in PNG monochrome format."""
 
-import Image
+from PIL import Image
 import json
 import optparse
 import sys
 import os
+import subprocess
 
 # Get options.
 usage = "./getmetrics.py -f fontimage.png -c wxh -o fonttexturestem"
@@ -25,19 +26,19 @@ parser.add_option("-d", "--dumpcells", dest="dumpcells", default=True)
 try:
     inimg = Image.open(options.fontimagename)
 except:
-    print 'Cannot open font image file: {0}'.format(options.fontimagename)
+    print('Cannot open font image file: {0}'.format(options.fontimagename))
     sys.exit(1)
 (red,green,blue,alpha) = inimg.split()
 
 # Get the target character size.
 sizewords = options.charsizestring.split('x')
 if len(sizewords) != 2:
-    print 'Invalid character size specification.'
+    print('Invalid character size specification.')
 try:
     cw = int(sizewords[0])
     ch = int(sizewords[1])
 except:
-    print 'Non numeric character size specification.'
+    print('Non numeric character size specification.')
     sys.exit(1)
 
 # The colour data must be multiplied by the alpha or there are very odd results!
@@ -47,7 +48,7 @@ truegreen = Image.composite(green,blackim,alpha)
 
 # Try to get metric data from the green channel.
 (w,h) = truegreen.size
-print 'Input image size =', w, 'X', h
+print('Input image size =', w, 'X', h)
 
 # Green marks at the top mark start of each cell in x.
 xpos = []
@@ -98,15 +99,15 @@ for i in range(0,len(ypose)):
 ysize /= len(ypose)
 
 # Display parameters.
-print 'Target character size = ', cw, ' X ', ch
-print 'Used width = ', xpose[len(xpose)-1] - xpos[0]
-print 'Used height = ', ypose[len(ypose)-1] - ypos[0]
-print 'Cell sizes = ', xsize, 'X', ysize
+print('Target character size = ', cw, ' X ', ch)
+print('Used width = ', xpose[len(xpose)-1] - xpos[0])
+print('Used height = ', ypose[len(ypose)-1] - ypos[0])
+print('Cell sizes = ', xsize, 'X', ysize)
 iwcell = int(xsize + 0.5)
 ihcell = int(ysize + 0.5)
-print 'Integer cell sizes = ',iwcell,' X ',ihcell
+print('Integer cell sizes = ',iwcell,' X ',ihcell)
 if options.dumpcells:
-    print 'Dumping character celles as images.'
+    print('Dumping character celles as images.')
 
 # Set margins and cut out a sensibly sized active bit.
 # This was intended for use with MipMap textures with power-of-two
@@ -144,13 +145,27 @@ jsonfile = options.outstem + '.jsn'
 flun = open(jsonfile,'w')
 json.dump(charmap,flun,sort_keys=True)
 flun.close()
-print 'Wrote:', jsonfile
+print('Wrote:', jsonfile)
 
 # Do a high quality resize of ZZcropblue.png with contrast enhancement.
 # This is done by Image Magick "convert"
 texim_w = int( ((float(cw)/xsize)*wreq) + 0.5 )
 texim_h = int( ((float(ch)/ysize)*hreq) + 0.5 )
-cmd = 'convert ZZcropblue.png -colorspace RGB -resize {0}x{1}\! -filter Mitchell  -colorspace sRGB -level 0,50% {2}.png'.format(texim_w,texim_h,options.outstem)
-print cmd
-stdouterr = os.popen4(cmd)[1].read()
-print stdouterr
+cmd = [ 'convert',
+        'ZZcropblue.png',
+        '-colorspace', 'RGB',
+        '-resize', '{0}x{1}'.format(texim_w,texim_h),
+        '-filter', 'Mitchell',
+        '-colorspace', 'sRGB',
+        '-level', '0,50%',
+        '{0}.png'.format(options.outstem) ]
+try:
+    retstring = subprocess.check_output(cmd, universal_newlines=True)
+except Exception as e:
+    print('ImageMagick convert failed.')
+    print(retstring)
+    print('... Reason:', e)
+    sys.exit(9)
+
+print('Wrote:', options.outstem+'.png')
+print('Done.')
