@@ -40,63 +40,67 @@ Drawbacks
   which it can connect.
 - The graphics command formats are unique to GTerm and GPLOT.
   (APL code can also generate these graphics commands).
-- Installation requires a Python environment.
+- Installation requires a Python environment (a "con" as well
+  as a "pro").
 - It is definitely not intended to replace "normal" terminal
   emulators for general use.
-- Windows (any version) is not supported.
+- No version of the Windows operating system is supported.
 
 Installation on Debian/Ubuntu Linux
 -----------------------------------
 
 For a completely "empty" machine:
 
-1. Install system wide binary pre-requisites.
-- python3 --version (note version, must be 3.10 or newer)
-- sudo apt install python3-pip
-- sudo apt install python3.xx-venv (replace xx with version)
-- sudo apt install portaudio19-dev
-- sudo apt install python-all-dev
-- sudo apt install pkg-config
-- sudo apt install libcairo2-dev
+1. Install system wide binary pre-requisites with APT.
+- `python3 --version` (note version, must be 3.10 or newer)
+- `sudo apt install python3-pip`
+- `sudo apt install python3.xx-venv` (replace `xx` with version)
+- `./aptinstalls.sh`
 
 2. Create a Python virtual environment for running GTerm.
-- python3 -m venv ~/gtermenv
-- source ~/gtermenv/bin/activate
-- python -m pip install --upgrade pip
+- `python3 -m venv ~/gtermenv`
+- `source ~/gtermenv/bin/activate`
+- `python -m pip install --upgrade pip`
 
 3. Install GTerm in that virtual environment.
-- pip install .
+- `pip install .`
 
 The number of binary packages that must be installed by APT is
-disappointing, but PyCairo and PyAudio wheels are not
+disappointing, but the PyCairo and PyAudio wheels are not
 "self contained". This can cause version mismatch problems
 between the binary libraries and the Python components, but
 that is how it is.
+
+It should be straightforward to install GTerm on any other Linux
+distribution using the packages listed in `aptinstalls.sh` as a
+guide.
 
 Installation on macOS
 ---------------------
 
 For a completely empty machine but with Homebrew already installed:
 
-1. Install binary pre-requisites.
-- brew install portaudio
-- brew install pkg-config
-- brew install cairo
-
+1. Install binary pre-requisites with Homebrew.
+- `brew install portaudio`
+- `brew install pkg-config`
+- `brew install cairo`
 
 2. Create a Python virtual environment for running GTerm.
-- python3 -m venv ~/gtermenv
-- source ~/gtermenv/bin/activate
-- python -m pip install --upgrade pip
+- `python3 -m venv ~/gtermenv`
+- `source ~/gtermenv/bin/activate`
+- `python -m pip install --upgrade pip`
 
 3. Install GTerm in that virtual environment.
-- pip install .
+- `pip install .`
 
 Running
 -------
 
-- Ensure the gtermenv venv is active.
-- Typing gterm in a CLI will launch GTerm.
+GTerm should be run from a "shell" in a terminal window.
+
+- Ensure the gtermenv venv is active, for example with:
+  `source ~/gtermenv/bin/activate`
+- Typing `gterm` will then launch GTerm.
 
 Configuration
 -------------
@@ -147,8 +151,8 @@ security reasons.
 
 The ctelnet program is intended for use with terminal emulators other than
 GTerm (which has a telnet client built in) such as XTerm or iTerm2.
-It is simple enough to build on any Linux or macOS system using the
-build.sh script.
+It is simple enough to build it on any Linux or macOS system using the
+`build.sh` script.
 ```
 ctelnet hostname_or_IP port_number
 ```
@@ -156,8 +160,6 @@ will connect to a telnet server on a host at a given port. There
 are other options, but they are not normally needed. When starting
 a terminal emulator, ctelnet should be given as the command for
 the emulator to execute.
-
-The ctelnet program can be built using the script `build.sh`.
 
 Documentation
 -------------

@@ -3414,10 +3414,16 @@ class GTermTelnetWidget(GTermWidget):
                     char = self.outcharmap[char]
             # Make sure <return> (key) actually sends <CR><LF> as Telnet defines it should.
             if self.telnet != None:
-                if char == '\r':
-                    self.telnet_write('\r\n')
-                else:
-                    self.telnet_write(chr(char))
+                try:
+                    if char == '\r':
+                        self.telnet_write('\r\n')
+                    else:
+                        self.telnet_write(chr(char))
+                except Exception as e:
+                    self.telnet_eof_func()
+                    self.screenAddString('\r\nFailed to write to telnet connection. Closed connection.')
+                    print('Failed to write to telnet connection. Now closed.')
+                    print('Reason:', e)
 
     def to_chars(self, array ):
         """
