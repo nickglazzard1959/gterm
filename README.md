@@ -170,3 +170,7 @@ the `Documentation` subdirectory.
 This can be rebuilt from LaTeX source using the `build.sh` script
 in that directory. A complete TeX/LaTeX installation must be present
 to do this though.
+
+Screenshots
+-----------
+
