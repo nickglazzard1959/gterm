@@ -173,4 +173,11 @@ to do this though.
 
 Screenshots
 -----------
+![gterm-apl-ss](https://github.com/nickglazzard1959/gterm/assets/27016608/f38eb8f9-5c1b-4c1a-9495-a52533cee774)
+
+![gterm-gplot-text](https://github.com/nickglazzard1959/gterm/assets/27016608/f54519e0-0f90-4c9d-bba2-32726c327345)
+
+![gterm-gplot-graphics](https://github.com/nickglazzard1959/gterm/assets/27016608/38b64e75-b387-4565-b260-3390168d1b56)
+
+
 
