@@ -31,7 +31,7 @@ classifiers = ["Development Status :: 4 - Beta",
 dependencies = ['PyOpenGL',
                 'PySide6',
                 'Pillow',
-                'Numpy',
+                'Numpy<2',
                 'pycairo==1.16.0',
                 'clipman',
                 'pyaudio'

@@ -2960,7 +2960,7 @@ class GTermWidget(QOpenGLWidget):
                 data_min = data_max
                 data_max = t
             data_range = data_max - data_min
-            step = tick_step( data_range, max_ticks )
+            step = self.tick_step( data_range, max_ticks )
             istep_min = int(math.floor( data_min / step ))
             istep_max = int(math.ceil( data_max / step )) + 1
             values = []
@@ -3076,7 +3076,7 @@ class GTermWidget(QOpenGLWidget):
                 self.cairoSetLineWidth(c,width)
                 
             elif cmd[0] == 7: # Bounds. xlo, ylo, xhi, yhi
-                if make_square:
+                if self.make_square:
                     y_offset = cmd[2]
                     y_scale = to_y_pixels / max(1e-6, cmd[4] - cmd[2])
                     x_offset = cmd[1]
@@ -3090,7 +3090,7 @@ class GTermWidget(QOpenGLWidget):
 
             elif cmd[0] == 8: # Graph bounds. xlo, ylo, xhi, yhi
                 # Find tick values for each axis.
-                if make_square:
+                if self.make_square:
                     xmid = 0.5 * ( cmd[1] + cmd[3] )
                     xdelta = 0.5 * ((float(to_x_pixels) / float(to_y_pixels)) * (cmd[4] - cmd[2]))
                     graph_tick_values_x = self.tick_values( xmid-xdelta, xmid+xdelta, 15 )
@@ -3102,7 +3102,7 @@ class GTermWidget(QOpenGLWidget):
                 xhi = graph_tick_values_x[-1]
                 ylo = graph_tick_values_y[0]
                 yhi = graph_tick_values_y[-1]
-                if make_square:
+                if self.make_square:
                     y_offset = ylo
                     y_scale = to_y_pixels / max(1e-6, yhi - ylo)
                     x_offset = xlo
@@ -3211,7 +3211,7 @@ class GTermWidget(QOpenGLWidget):
                 c.stroke()
 
             elif cmd[0] == 16: # Set/clear square mode.
-                make_square = ( cmd[1] > 0.0 )
+                self.make_square = ( cmd[1] > 0.0 )
 
         # If in a line after the last command, end the line.
         if inaline:
