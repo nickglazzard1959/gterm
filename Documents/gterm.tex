@@ -1110,27 +1110,35 @@ In these tables, I-code is the code number used internally in \textbf{GTerm} for
 U-code is the Unicode code point (note how they are scattered all over the place!),
 and B-code is the three character string representation used by NOS APL2 in `batch'
 mode (i.e. when using a terminal that does not natively support an APL character set ---
-none of those known to NOS APL2 made it in to an emulator as far as I can see). The
+I think the only emulator of a terminal that natively supported APL is Rene Richarz's Tektronix 4015 emulator). The
 B-codes are what \textbf{GTerm} sends to the mainframe when an APL character is `typed', and what the
-mainframe sends back to \textbf{GTerm} to display an APL character.
+mainframe sends back to \textbf{GTerm} to display an APL character. 
 
 \subsection{APL and graphics}
 Prior to \textbf{GTerm} V0.4, the best that could 
 be done was to write out \textbf{GPLOT} commands to a file and have \textbf{GPLOT} read that
-file to draw graphs. The new graphics commands make it feasible to output graphics directly from APL.
-The details remain under development, but the current version is in workspace \texttt{WSGRAF3}, which provides
+file to draw graphs. The new graphics commands make it feasible to output graphics directly from APL,
+and a workspace has been constructed -- \texttt{WSPLOT} -- which provides
 the following functions:
 
 \begin{itemize}
 \item \texttt{GCLR} : Empty the graphics commands list.
-\item \texttt{GCOL r g b} : Set the current drawing colour.
-\item \texttt{GFIL} : Fill the display with the current colour. Could be seen as erase, really.
-\item \texttt{GFLS} : Flush output to GTerm (not really needed).
+\item \texttt{GCOL r g b} : Set the current drawing colour using 0 to 1 range RGB values.
+\item \texttt{GFIL} : Fill the display with the current colour -- an erase operation.
+\item \texttt{GFLS} : Flush output to GTerm (not really needed in user code).
 \item \texttt{GBNS xlo ylo xhi yhi} : Set the G-Bounds for subsequent plots. This draws the axes, labels ticks and draws a grid.
-\item \texttt{x PLOT y} : Plot y against x (equal length vectors).
+\item \texttt{GNEW}: Prepare to draw a new graph, black on a white background, replacing a tedious \texttt{GCLR}, \texttt{GCOL}, \texttt{GFIL}, \texttt{GCOL} sequence.
+\item \texttt{x GPLOT y} : Plot \texttt{y} against \texttt{x} (equal length vectors). The bounds are automatically set based on the ranges of \texttt{x} and \texttt{y}.
+item \texttt{x GPLOTS y} : Plot \texttt{y} against \texttt{x}, but leave the bounds unchanged. This allows multiple plots on the same axes.
 \item \texttt{GMOV x y} : Low level move.
 \item \texttt{GDRW x y} : Low level draw line to.
+\item \texttt{LINS start end step} : Return a vector of  length \texttt{step} values with numbers evenly spaced from \texttt{start} to \texttt{end} (inclusive). Modelled on Numpy \texttt{linspace()}.
 \end{itemize}
+
+\newpara
+The WSPLOT workspace is constructed from APL source using the batch job found in \texttt{wsplot.job}. 
+This makes good use of the `batch' mode APL character representations, which may be a good way of storing 
+APL programs external to NOS.
 
 \newpara
 A simple example of graph plotting using these functions is:
@@ -1142,17 +1150,17 @@ A simple example of graph plotting using these functions is:
 /APL,TT=713.
 APL2.1.014 97/11/06. 09.32.18.
 CLEAR WS
-      ▯load 'wsgraf3'
-WSGRAF3 9/06/03 16:39:22
+      ▯load 'wsplot'
+WSPLOT 4/09/20 12:05:03
       )fns
-GBNS    GCLR    GCOL    GDRW    GFIL    GFLS    GMOV    GWID    JUMP    LINS    PLOT
-      gclr
-      gcol 1 1 1
-      gfil
-      gcol 0 0 0
+GBNS    GCLR    GCOL    GDRW    GFIL    GFLS    GMOV    GNEW    GPLOT   GPLOTS  GWID    LINS
+      gnew
       x←lins 0 1 11
       y←x*2
-      x plot y
+      x gplot y
+      y←y+0.1
+      gcol 1 0 0
+      x gplots y
 \end{verbatim}
 }
 \hrule
@@ -1161,7 +1169,7 @@ the result of which is shown in Figure~\ref{fig:graf2}.
 
 \begin{figure}
 	\centering
-		\includegraphics[width=0.8\maxwidth]{gnewaplot.eps}
+		\includegraphics[width=0.8\maxwidth]{aplploteg.eps}
 	\caption{\textbf{GTerm} Graphics from NOS APL}
 	\label{fig:graf2}
 \end{figure}
