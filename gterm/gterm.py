@@ -182,7 +182,7 @@ except ImportError:
 try:
     from githashvalue import _current_git_desc
 except ImportError:
-    _current_git_desc="v0.8.0"
+    _current_git_desc="v0.8.5"
 
 # Track lock usage for debugging purposes.
 global_s_lock = 0  # Screen character buffer.
@@ -2704,7 +2704,7 @@ class GTermWidget(QOpenGLWidget):
         try:
             # Get the command as a character code.
             command = commandlist[2]
-            # See if <escape> or @ is the escape charatcter. If @ make a string version
+            # See if <escape> or @ is the escape character. If @ make a string version
             # of the character code lists and split it at white space to a list of strings.
             alt_escmode = False
             if commandlist[0] == 64:
@@ -2868,6 +2868,22 @@ class GTermWidget(QOpenGLWidget):
                 self.gcb.append((16,is_square))
                 if self.debuglevel > 2:
                     print("SET_SQUARE", self.gcb[-1])
+                    
+            elif command == 72:
+                # H: relative move. ONLY in alt_escmode.
+                x = self.alt_float(commandsplit[1])
+                y = self.alt_float(commandsplit[2])
+                self.gcb.append((17,x,y))
+                if self.debuglevel > 2:
+                    print("RELMOVE", self.gcb[-1])
+                    
+            elif command == 73:
+                # I: relative draw. ONLY in alt_escmode.
+                x = self.alt_float(commandsplit[1])
+                y = self.alt_float(commandsplit[2])
+                self.gcb.append((18,x,y))
+                if self.debuglevel > 2:
+                    print("RELDRAW", self.gcb[-1])                    
 
             # If command wasn't clear display list, bump display list command count.
             if command != 48:
@@ -3006,6 +3022,11 @@ class GTermWidget(QOpenGLWidget):
         pmx = 0.0
         pmy = 0.0
 
+        # Also track current position more generally for relative drawing.
+        gcp = numpy.zeros(2)
+        if self.debuglevel > 2:
+            print('init:', gcp)
+
         # Set the initial state variables.
         if self.make_square:
             y_offset = self.ylo
@@ -3040,8 +3061,8 @@ class GTermWidget(QOpenGLWidget):
             if self.debuglevel > 2:
                 print('cairoRenderGraphics(): cmd =',cmd)
                 
-            # If cmd is not draw, if in a line, end the line.
-            if cmd[0] != 4:
+            # If cmd is not draw or reldraw, if in a line, end the line.
+            if (cmd[0] != 4) and (cmd[0] != 18):
                 if inaline:
                     c.stroke()
                     inaline = False
@@ -3059,6 +3080,9 @@ class GTermWidget(QOpenGLWidget):
                 pending_move = True
                 pmx = (gpos[0] - x_offset) * x_scale
                 pmy = (gpos[1] - y_offset) * y_scale
+                gcp = numpy.asarray(gpos)
+                if self.debuglevel > 2:
+                    print('move:', gcp)
                 
             elif cmd[0] == 4: # Draw. Add line segment to line.
                 if pending_move:
@@ -3070,6 +3094,9 @@ class GTermWidget(QOpenGLWidget):
                     x = (gpos[0] - x_offset) * x_scale
                     y = (gpos[1] - y_offset) * y_scale
                     c.line_to(x,to_y_pixels-y)
+                    gcp = numpy.asarray(gpos)
+                    if self.debuglevel > 2:
+                        print('draw:', gcp)
                     
             elif cmd[0] == 6: # Width.
                 width = cmd[1]
@@ -3193,6 +3220,9 @@ class GTermWidget(QOpenGLWidget):
                 c.move_to( pmx, to_y_pixels-pmy-delta )
                 c.line_to( pmx, to_y_pixels-pmy+delta )
                 c.stroke()
+                gcp = numpy.asarray(gpos)
+                if self.debuglevel > 2:
+                    print('point:', gcp)
 
             elif cmd[0] == 14: # Draw a graph title.
                 c.select_font_face( fontnames[1], cairo.FONT_SLANT_NORMAL, cairo.FONT_WEIGHT_NORMAL )
@@ -3209,9 +3239,35 @@ class GTermWidget(QOpenGLWidget):
                 prd = cmd[3] * x_scale
                 c.arc( pmx, pmy, prd, 0, 2*math.pi )
                 c.stroke()
+                gcp = numpy.asarray([cmd[1], cmd[2]])
+                if self.debuglevel > 2:
+                    print('circle:', gcp)
 
             elif cmd[0] == 16: # Set/clear square mode.
                 self.make_square = ( cmd[1] > 0.0 )
+
+            elif cmd[0] == 17: # Relative Move.
+                gpos = cmd[1:]
+                pending_move = True
+                gcp += numpy.asarray(gpos)
+                pmx = (gcp[0] - x_offset) * x_scale
+                pmy = (gcp[1] - y_offset) * y_scale
+                if self.debuglevel > 2:
+                    print('relmove:', gcp)
+                
+            elif cmd[0] == 18: # Relative Draw. Add line segment to line.
+                if pending_move:
+                    c.move_to(pmx,to_y_pixels-pmy)
+                    pending_move = False
+                    inaline = True
+                if inaline:
+                    gpos = cmd[1:]
+                    gcp += numpy.asarray(gpos)
+                    x = (gcp[0] - x_offset) * x_scale
+                    y = (gcp[1] - y_offset) * y_scale
+                    c.line_to(x,to_y_pixels-y)
+                    if self.debuglevel > 2:
+                        print('reldraw:', gcp)
 
         # If in a line after the last command, end the line.
         if inaline:
@@ -3414,16 +3470,10 @@ class GTermTelnetWidget(GTermWidget):
                     char = self.outcharmap[char]
             # Make sure <return> (key) actually sends <CR><LF> as Telnet defines it should.
             if self.telnet != None:
-                try:
-                    if char == '\r':
-                        self.telnet_write('\r\n')
-                    else:
-                        self.telnet_write(chr(char))
-                except Exception as e:
-                    self.telnet_eof_func()
-                    self.screenAddString('\r\nFailed to write to telnet connection. Closed connection.')
-                    print('Failed to write to telnet connection. Now closed.')
-                    print('Reason:', e)
+                if char == '\r':
+                    self.telnet_write('\r\n')
+                else:
+                    self.telnet_write(chr(char))
 
     def to_chars(self, array ):
         """
