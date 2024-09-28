@@ -28,6 +28,7 @@ Originally written in 2013 as a Python learning exercise.
 - Changes for packaging with pip. 29-MAR-2024.
 - Added text buffer cut and paste via Clipman. 30-MAR-2024.
 - Silence meaningless OS error messages on (some) Linux systems from PyAudio. 31-MAR-2024.
+- Added relative draw and move. 24-SEP-2024
 """
 # Imports ... Lots of them!
 import sys
@@ -2492,6 +2493,8 @@ class GTermWidget(QOpenGLWidget):
             self.zoom_xlo = float(mouseEvent.position().x()) / xdiv
             self.zoom_ylo = float(self.height_pixels-mouseEvent.position().y()) / self.height_pixels
             self.zoom_box = True
+            self.xlo_raw = float(mouseEvent.position().x()) / self.width_pixels
+            self.ylo_raw = self.zoom_ylo
         # Start text selection in text case.
         if not self.drawgraf:
             self.x1_text = self.x2_text = \
@@ -2513,6 +2516,8 @@ class GTermWidget(QOpenGLWidget):
             xdiv = self.height_pixels if self.make_square else self.width_pixels
             self.zoom_xhi = float(mouseEvent.position().x()) / xdiv
             self.zoom_yhi = float(self.height_pixels-mouseEvent.position().y()) / self.height_pixels
+            self.xhi_raw = float(mouseEvent.position().x()) / self.width_pixels
+            self.yhi_raw = self.zoom_yhi
             sxlo = min(self.zoom_xlo,self.zoom_xhi)
             sylo = min(self.zoom_ylo,self.zoom_yhi)
             sxhi = max(self.zoom_xlo,self.zoom_xhi)
@@ -2676,12 +2681,13 @@ class GTermWidget(QOpenGLWidget):
     def alt_float(self,floatstring):
         """
         Graphics: Convert a floating point number string to float for alt_escmode (Cyber APL).
-        This has negative numbers that begin $NG...
+        This has negative numbers that begin $NG... 
+        NG: 27-SEP-2024: Forgot can also have 123E-10 as 123E$NG10.
         """
         if floatstring[0] == '$':
-            return -float(floatstring[3:])
+            return -float(floatstring[3:].replace('E$NG','e-'))
         else:
-            return float(floatstring)
+            return float(floatstring.replace('E$NG','e-'))
 
     def addGraphics(self,commandlist):
         """
@@ -3103,32 +3109,61 @@ class GTermWidget(QOpenGLWidget):
                 self.cairoSetLineWidth(c,width)
                 
             elif cmd[0] == 7: # Bounds. xlo, ylo, xhi, yhi
+                # Adjust the supplied bounds for any active zoom.
+                if self.zoomed:
+                    xblo = cmd[1] + self.xlo_raw * (cmd[3] - cmd[1])
+                    xbhi = cmd[1] + self.xhi_raw * (cmd[3] - cmd[1])
+                    yblo = cmd[2] + self.ylo_raw * (cmd[4] - cmd[2])
+                    ybhi = cmd[2] + self.yhi_raw * (cmd[4] - cmd[2])
+                else:
+                    xblo = cmd[1]
+                    xbhi = cmd[3]
+                    yblo = cmd[2]
+                    ybhi = cmd[4]
+                # Find scales and offsets.
                 if self.make_square:
-                    y_offset = cmd[2]
-                    y_scale = to_y_pixels / max(1e-6, cmd[4] - cmd[2])
-                    x_offset = cmd[1]
+                    y_offset = yblo
+                    y_scale = to_y_pixels / max(1e-6, ybhi - yblo)
+                    x_offset = xblo
                     x_scale = y_scale
                     pass
                 else:
-                    x_offset = cmd[1]
-                    x_scale = to_x_pixels / max(1e-6, cmd[3] - cmd[1])
+                    x_offset = xblo
+                    x_scale = to_x_pixels / max(1e-6, xbhi - xblo)
                     y_offset = cmd[2]
-                    y_scale = to_y_pixels / max(1e-6, cmd[4] - cmd[2])
+                    y_scale = to_y_pixels / max(1e-6, ybhi - yblo)
 
             elif cmd[0] == 8: # Graph bounds. xlo, ylo, xhi, yhi
+                # Adjust the supplied bounds for any active zoom.
+                if self.zoomed:
+                    xblo = self.gxl + self.xlo_raw * (self.gxh - self.gxl)
+                    xbhi = self.gxl + self.xhi_raw * (self.gxh - self.gxl)
+                    yblo = self.gyl + self.ylo_raw * (self.gyh - self.gyl)
+                    ybhi = self.gyl + self.yhi_raw * (self.gyh - self.gyl)
+                else:
+                    xblo = cmd[1]
+                    xbhi = cmd[3]
+                    yblo = cmd[2]
+                    ybhi = cmd[4]
                 # Find tick values for each axis.
                 if self.make_square:
-                    xmid = 0.5 * ( cmd[1] + cmd[3] )
-                    xdelta = 0.5 * ((float(to_x_pixels) / float(to_y_pixels)) * (cmd[4] - cmd[2]))
+                    xmid = 0.5 * ( xblo + xbhi )
+                    xdelta = 0.5 * ((float(to_x_pixels) / float(to_y_pixels)) * (ybhi - yblo))
                     graph_tick_values_x = self.tick_values( xmid-xdelta, xmid+xdelta, 15 )
                 else:
-                    graph_tick_values_x = self.tick_values( cmd[1], cmd[3], 15 )
-                graph_tick_values_y = self.tick_values( cmd[2], cmd[4], 10 )
+                    graph_tick_values_x = self.tick_values( xblo, xbhi, 15 )
+                graph_tick_values_y = self.tick_values( yblo, ybhi, 10 )
                 # Set the drawing bounds to the smallest and largest tick values on each axis.
                 xlo = graph_tick_values_x[0]
                 xhi = graph_tick_values_x[-1]
                 ylo = graph_tick_values_y[0]
                 yhi = graph_tick_values_y[-1]
+                if not self.zoomed:
+                    self.gxl = xlo
+                    self.gxh = xhi
+                    self.gyl = ylo
+                    self.gyh = yhi
+                # Find scales and offsets.
                 if self.make_square:
                     y_offset = ylo
                     y_scale = to_y_pixels / max(1e-6, yhi - ylo)
