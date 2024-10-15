@@ -882,7 +882,11 @@ def _bytestostr( ccharpin ):
     if ccharpin is None:
         return None
     else:
-        return ccharpin.decode('utf-8')
+        try:
+            result = ccharpin.decode('ascii')
+        except:
+            result = ' '
+        return result
 
 def _strtobytes_ifnot( py3string ):
     """
@@ -4314,7 +4318,7 @@ class TerminalDialog(QDialog):
             self.screen.followBackspaceWithNewline(True)
             self.screen.char_to_string_map = reverse_dict_kv(cyber_apl_in_map)
             # Define a string to send if F1 key is pressed.
-            self.screen.fancykeymap[Qt.Key_F1] = 'APL,TT=713.\r'
+            self.screen.fancykeymap[Qt.Key_F1] = 'APL,TT=713,MX=100000.\r'
             self.screen.set_terminate_char(20) # Ctrl-T
             self.screen.set_local_recall(True)
         elif imode == 1:

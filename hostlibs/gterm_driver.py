@@ -9,12 +9,12 @@ class GtermGraphics(object):
     a very simple standalone graphics library rather than a totally dumb device.
     """
 
-    def __init__(self,lun,fixedmode=False):
+    def __init__(self,lun=sys.stdout,fixedmode=False):
         self.lun = lun
         self.fixedmode = fixedmode
 
     def unavailable(self, msg):
-        print 'Function: {0}() is unavailable in fixed mode.'.format(msg)
+        print('Function: {0}() is unavailable in fixed mode.'.format(msg))
 
     def clamp(self,v,lo,hi):
         return max(lo,min(v,hi))
@@ -53,15 +53,19 @@ class GtermGraphics(object):
         else:
             self.lun.write('@[2@')
 
-    def pen(self,x,y,z):
+    def pen(self,x,y,z,rel=False):
         if z > 0:
-            c = 4
+            c = 'I' if rel else 4
         else:
-            c = 3
+            c = 'H' if rel else 3
         if self.fixedmode:
-            ix = self.clamp(int(9999.9*x),0,9999)
-            iy = self.clamp(int(9999.9*y),0,9999)
-            s = '\033[{0:1d}{1:04d}{2:04d}z'.format(c,ix,iy)
+            if rel:
+                self.unavailable('relative move or draw')
+                return
+            else:
+                ix = self.clamp(int(9999.9*x),0,9999)
+                iy = self.clamp(int(9999.9*y),0,9999)
+                s = '\033[{0:1d}{1:04d}{2:04d}z'.format(c,ix,iy)
         else:
             s = '@[{0} {1} {2} @'.format(c,x,y)
         self.lun.write(s)
@@ -69,7 +73,7 @@ class GtermGraphics(object):
     def move(self,x,y):
         """
         Move to user coordinates (x,y). In fixed mode, the user coordinates
-        are fixed at (0,0) to (1,1) corresponsding to the bootom laft and top right.
+        are fixed at (0,0) to (1,1) corresponsding to the bottom laft and top right.
         In "altmode", these are set by bounds() or gbounds().
         """
         self.pen(x,y,0)
@@ -80,6 +84,24 @@ class GtermGraphics(object):
         """
         self.pen(x,y,1)
 
+    def moverel(self,dx,dy):
+        """
+        Relative move from current position by (dx,dy).
+        """
+        if self.fixedmode:
+            self.unavailable('moverel')
+        else:
+            self.pen(dx,dy,0,rel=True)
+
+    def drawrel(self,dx,dy):
+        """
+        Relative draw from current position by (dx,dy).
+        """
+        if self.fixedmode:
+            self.unavailable('drawrel')
+        else:
+            self.pen(dx,dy,1,rel=True)
+        
     def flush(self):
         """
         Ensure the contents of the display list are drawn.
@@ -161,7 +183,7 @@ class GtermGraphics(object):
             try:
                 alcode = aldict[alignment]
             except:
-                print 'Unknown alignment name:',alignment
+                print('Unknown alignment name:',alignment)
                 return
             s = '@[B {0} @'.format(alcode)
             self.lun.write(s)
@@ -178,7 +200,7 @@ class GtermGraphics(object):
             try:
                 fncode = fndict[fontname]
             except:
-                print 'Unknown font name:',fontname
+                print('Unknown font name:',fontname)
                 return
             s = '@[C {0} @'.format(fncode)
             self.lun.write(s)
@@ -278,23 +300,23 @@ if __name__ == "__main__":
         gt.move(0.5,1.5)
         gt.textsize(14)
         gt.textalign('left')
-        gt.text('Hello girls')
+        gt.text('Hello all')
         gt.move(0.5,1.7)
         gt.text('Hello again...')
         gt.textsize(25)
         gt.textalign('center')
         gt.move(0.5,1.9)
-        gt.text('Hello BIG girls.')
+        gt.text('Hello BIG people.')
         gt.textsize(14)
         gt.textalign('right')
         gt.textfont('sans')
         gt.move(0.5,2.1)
-        gt.text('Hello smaller girls on the right')
+        gt.text('Hello smaller people on the right')
         gt.textalign('dispcenter')
         gt.textsize(20)
         gt.textfont('fixed')
         gt.move(0.5,2.3)
-        gt.text('Hello girls in the middle')
+        gt.text('Hello people in the middle')
         gt.flush()
 
     gt.colour(0,0,0)

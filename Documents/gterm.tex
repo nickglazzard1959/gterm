@@ -234,7 +234,7 @@ NGIPT\\
 \begin{center}
 \Large 
 \textcolor{white}{
-Version 0.8.0\\
+Version 0.8.5\\
 \today
 }
 \end{center}
@@ -274,22 +274,23 @@ There are, however, the following potentially useful features:
       the representation of that code. Tools for making the required texture map from a PNG image
       file exported from Inkscape are part of \textbf{GTerm}.
 \item \textbfc{In addition to text, there is a separate `graphics plane' in which colour vector graphics can
-      be drawn using a simple set of graphics commands}. 
+      be drawn using a simple set of graphics commands}. There are actually two sets of graphics commands, "original" and
+      "new". The "new" commands are easier to use and include some quite "high level" functions.
 \item \textbfc{Characters in the texture map can be chosen to form a virtual keyboard which \textbf{GTerm} can display}.
-      Picking characters on this generates a 7 bit code associated with that character. 
+      Picking characters on this generates a 7 bit code associated with that character. Pop-up help strings can be associated
+      with each virtual keyboard key.
 \item Outgoing characters can be translated in to other single characters or arbitrary strings.
 \item Similarly, incoming characters or strings can be translated to character codes.
-\item All drawing is done by Cairo with decent anti-aliasing. Prior to V0.4, it was done primarily by
-	OpenGL with Cairo doing optional anti-aliased drawing. The anti-aliasing was always used in practice, though,
-	and dropping OpenGL for graphics display became an obvious simplification.
+\item All graphics drawing is done by Cairo with decent anti-aliasing. 
 \item All input/output is logged to a Unicode text log file. Internal character codes can be associated
       with any Unicode code point.
 \item Graphics data can be saved to file in SVG format. 
-\item Command line recall and editing is built in to \textbf{GTerm}, providing this for systems and
-applications that otherwise would not have it. This includes CDC NOS APL (see below). 
+\item Line recall and editing is built in to \textbf{GTerm}, providing this for systems and
+	applications that otherwise would not have it. This includes CDC NOS APL (see below). 
 \item A very high level graphics facility (in addition to the original graphics
-scheme) that can be used to plot graphs with almost all the work done by \textbf{GTerm}. Again, this is to support
-the use of APL.
+	scheme) that can be used to plot graphs with almost all the work done by \textbf{GTerm}. Again, this is to support
+	the use of APL.
+\item A Python library and an APL workspace that can be used on appropriate host computers to draw graphics with  \textbf{GTerm}.
 \end{itemize}
 This may seem like a very strange project (and it is!). There is some method in the madness, though.
 \textbfc{It was primarily written to serve
@@ -298,9 +299,7 @@ Two things were needed for this (beyond the basics):
 \begin{itemize}
 \item \textbfc{Provide a way of displaying colour vector graphics}.
 \item \textbfc{Provide a way of using the APL character set with NOS APL 2.} This supports several APL terminals --
-      none of which exist any more in emulation\footnote{True (I believe) in 2013 when 
-      this project started -- but no longer. See a later footnote.}, 
-      as far as I can see. It also supports a `batch mode'
+      but in 2013, none of them existed any more in emulation. It also supports a `batch mode'
       where APL characters are represented by two letter codes starting with a dollar sign. \textbf{GTerm} can
       map internal character codes associated with APL character glyphs to these strings and vice versa.
 \end{itemize}
@@ -312,15 +311,13 @@ be added if desired, and many things that would be tedious configuration files c
 (I realize that way of doing things may not be approved of by some, but I like it.)
 \newpara
 Were there simpler ways of accomplishing the goals than writing \textbf{GTerm}? Well -- it might have been possible to
-modify xterm \ldots but I'm not sure that would have been the better alternative. In fact, I'm pretty sure it wouldn't
-have been. Apart from that, there really didn't seem to be anything beyond xterm's Tektronix 4014 emulation as far
-as graphics went. That is fine -- but it is monochrome and the lines are not anti-aliased. There don't seem to be
-any other `graphics terminal' emulators out there\footnote{As of mid-2019, this is no longer true.
-Rene Richarz has an excellent Tektronix 4014 emulator which reproduces the experience of using that
-device superbly well. It is compact, clean, self contained, C code. It also includes APL (4015) emulation.
-\url{https://github.com/rricharz/Tek4010}}. Perhaps not surprising at this point in time.
-As for using NOS APL 2 batch character codes -- obviously I was going to have to deal with that
-myself somehow.
+modify \texttt{xterm} \ldots but I'm not sure that would have been the better alternative. In fact, I'm pretty sure it wouldn't
+have been. Apart from that, there really didn't seem to be anything beyond \texttt{xterm}'s Tektronix 4014 emulation as far
+as emulated graphics `terminals' went in 2013. That is fine -- but it is monochrome and the lines are not anti-aliased. In 2019,
+Rene Richarz created an excellent Tektronix 4014 emulator which reproduces the experience of using that
+device superbly well. It is compact, clean, self contained, C code. It also includes APL (Tektronix 4015) emulation.
+It is available here: \url{https://github.com/rricharz/Tek4010}. However, this doesn't meet the desire for colour graphics
+output.
 \newpara
 On the other hand, I knew very little about how much support now exists for Unicode before starting this project.
 There is actually a very great deal -- native English speakers probably know a lot less about this than other people.
@@ -343,7 +340,7 @@ can take minutes to perform so there can be a long wait before \textbf{GTerm} ac
 \newpara
 Consequently, GTerm is now supplied for installation with Python \textbf{pip}. In itself, it is a pure Python program, so this is 
 a reasonable approach, but there are pre-requisites which seem to not be fully handled by \textbf{pip} and some binary
-components must be installed using the appropriate system package manager (or Homebrew on macOS).
+components must be installed using the appropriate system package manager (or Homebrew or equivalent on macOS).
 \newpara
 Please see the current \texttt{README.md} file for detailed installation instructions.
 
@@ -355,7 +352,7 @@ The following files make up \textbf{GTerm}:
 \item \texttt{gterm.py}: This is the terminal emulator. It can be run using the command: \texttt{gterm} after installation.
 \item \texttt{gtermhostinfo.txt}: This is a list of `known hosts' which can be selected from a list in \textbf{GTerm}. The file
       specifies a name to be shown for the host in the list, the host name or IP address, the port number to use on the
-      host and the host type (\texttt{nos, nosapl, vms, unix} or \texttt{windows}). 
+      host and the host type (\texttt{nos, nosapl, vms, unix, unixalt} or \texttt{windows}). 
 \item \texttt{mainfont.svg}: This is the template SVG file containing a grid of character positions with fiduciary marks in
       red and green, together with the default font glyphs in blue. By editing the font glyphs in this file in
       Inkscape, any character can be drawn for any character code.
@@ -378,15 +375,21 @@ The following files make up \textbf{GTerm}:
       the log file will contain the right Unicode code point for printing. It may be that not all characters have 
       a Unicode equivalent -- although the default font does (more or less). Edit this program to set the mapping,
       which is written to \texttt{mainfontunicode.jsn} (default).
-\item \texttt{kling.wav}: The sound used for the terminal bell. I took this file from Libre Office.
+\item \texttt{beep.wav}: The sound used for the terminal bell.
+\item \texttt{kling.wav}: An alternative sound for the terminal bell. I took this file from Libre Office. It makes a lot more noise
+	than \texttt{beep.wav}!  Any \texttt{.wav} file could be used by renaming it to \texttt{beep.wav}.
 \item \texttt{build.sh}: A Bash script that can be used to create \texttt{mainfontexture.png}
       from \texttt{mainfont.png}, assemble the APL virtual
       keyboard image, \texttt{aplvkb.png} from \texttt{aplvkb.jsn} and to create a new internal 
       character code to Unicode code point map,
       \texttt{mainfontunicode.jsn}, from \texttt{mainfontunicode.py}.
-\item \texttt{gtermicon.png}: The icon image used in Unity.
-\item \texttt{trygraf.py}: An example class and test program for the graphics commands understood by \textbf{GTerm}.
-      Other Python programs could use this to create graphical output to be displayed by \textbf{GTerm}.
+\item \texttt{gtermicon.png}: The icon image used in Linux.
+\item \texttt{gterm\_driver.py}: A Python library that makes it easy to draw things using the graphics commands 
+		understood by \textbf{GTerm}. Both "new" and "original" commands can be output, but many functions need to use
+		the "new" commands. Other Python programs (on hosts that have a Python interpreter) could use this to create 
+		graphical output to be displayed by \textbf{GTerm}. The file can also be run as a self contained test program.
+\item \texttt{wsplot.job}: This is a NOS batch job which will create an APL workspace called \texttt{WSPLOT} which contains functions
+		needed to output graphics using the "new" graphics commands, including simple graph plotting.
 \item \texttt{Documents}: A directory containing the documentation for \textbf{GTerm} (this document).
 \end{itemize}
 
@@ -410,11 +413,14 @@ The controls are as follows:
       appropriate `erase' character, option negotiations on connect, escape sequence handlers and possibly
       key definitions for that type of host. The choices available are:
       \begin{itemize}
-      \item \texttt{Cyber/APL}: Settings for a CDC NOS system with APL 2 batch character sequence and \textbf{GTerm}
-            graphics escape handlers. Erase is backspace. Interrupt is \texttt{Control-T}. Type \texttt{nosapl} in
+      \item \texttt{Cyber/APL}: Intended for use with NOS APL 2.\\
+      	   Settings for a CDC NOS system with APL 2 batch character sequence and "new" \textbf{GTerm}
+            graphics command handlers. Erase is backspace. Interrupt is \texttt{Control-T}. Type \texttt{nosapl} in
             a \texttt{gtermhostinfo.txt} host entry selects this host type. Key \texttt{F1} is set to output the
-            string: \texttt{APL,TT=713.} which will start the APL interpreter in the correct terminal mode.
-      \item \texttt{Cyber}: Settings for a CDC NOS system with \textbf{GTerm}
+            string: \texttt{APL,TT=713,MX=100000.} which will start the APL interpreter in the correct terminal mode and with
+            a decent maximum workspace size.
+      \item \texttt{Cyber}: Intended for use with GPLOT on NOS.\\
+      	   Settings for a CDC NOS system with "original" \textbf{GTerm}
             graphics escape handlers only.
             Erase is backspace. Interrupt is \texttt{Control-T}. Type \texttt{nos} in
             a \texttt{gtermhostinfo.txt} host entry selects this host type.
@@ -422,16 +428,22 @@ The controls are as follows:
             \texttt{ABGPLOT,OBEY=APLOT,GET=Y.} \\
             which will run the GPLOT plotting
             program reading commands from \texttt{APLOT}. 
-      \item \texttt{VMS}: Settings for a DEC VMS system with \textbf{GTerm} graphics escape handlers. Erase is delete.
+      \item \texttt{VMS}: Settings for a DEC VMS system with "original" \textbf{GTerm} graphics escape handlers. Erase is delete.
             Interrupt is \texttt{Control-Y}. Arrow keys send VT-100 sequences.
             Type \texttt{vms} in a \texttt{gtermhostinfo.txt} host entry selects 
             this host type.
-      \item \texttt{Unix}: Settings for Unix (including Linux) with \textbf{GTerm} graphics escape handlers. Erase is
+      \item \texttt{Unix}: Settings for Unix (including Linux) with "original"  \textbf{GTerm} graphics escape handlers. Erase is
             delete. Interrupt is \texttt{Control-C}. Arrow keys send VT-100 sequences. Type \texttt{unix}
-            in a \texttt{gtermhostinfo.txt} host entry selects this host type.
+            in a \texttt{gtermhostinfo.txt} host entry selects this host type. Note: using:\\
+            \texttt{export TERM=dumb}\\
+            \texttt{stty istrip}\\
+            is probably a good idea.
+      \item \texttt{Unix/Alt}: Settings for Unix (including Linux) with "new"  \textbf{GTerm} graphics escape handlers. Otherwise,
+      		as per \texttt{Unix}, except type \texttt{unixalt} in a \texttt{gtermhostinfo.txt} host entry selects this host type.
       \item \texttt{Windows}: Settings for a Windows host with \textbf{GTerm} graphics escape handlers. Erase is backspace.
             Interrupt is \texttt{Control-C}. Arrow keys send VT-100 sequences.
-            Type \texttt{windows} in a \texttt{gtermhostinfo.txt} host entry selects this host type.
+            Type \texttt{windows} in a \texttt{gtermhostinfo.txt} host entry selects this host type.\\
+            Note: this mode has not been tested in over a decade as of 2024, so I have no idea if it still works!
       \end{itemize}
       Selecting a `known host' sets this host type control.
 \item \texttt{Clear} button. Erases the current display (text or graphics).
@@ -563,15 +575,15 @@ V & Paste printable characters from the first line of any clipboard contents.\\
 \newpara
 Scrolling in the text plane is controlled with the mouse wheel (or equivalent). The scroll back buffer is 1040 lines.
 
-\subsection{Command line editing}
-The arrow keys are used to perform local command line editing. A buffer of lines input by the user
+\subsection{Local line editing}
+The arrow keys are used to perform local line editing. A buffer of lines input by the user
 and terminated by \texttt{(return)} is maintained inside \textbf{GTerm}. These may or may not be `commands', but they will be
 a superset of them (there is, of course, no way \textbf{GTerm} can tell the difference between commands to the operating system,
 commands (etc.) to applications and data entry). The actual implementation of line editing is pretty tortuous, but it 
 seems to work correctly (finally!).
 
 \newpara
-The \texttt{up-arrow} key moves up the command list (further into the past) and the \texttt{down-arrow} moves down
+The \texttt{up-arrow} key moves up the `command' list (further into the past) and the \texttt{down-arrow} moves down
 the history list towards the present. When the present is reached, a blank line is shown indicating a new command can be
 entered.
 
@@ -657,7 +669,7 @@ Flush  & \texttt{<Esc> [ 5 z}             & Force the graphics command list to b
 Width  & \texttt{<Esc> [ 6 www z}         & Set the line width. Range: 1:999\\
 \hline
 \end{tabular}
-\caption{Graphics Commands}
+\caption{Original Graphics Commands}
 \label{tab:graphicscmds}
 \end{table}
 
@@ -678,13 +690,18 @@ end in \texttt{z}. Performance is actually quite reasonable.
 \hline
 Command & Sequence & Explanation\\
 \hline
+Flush  & \texttt{@[5 @}             & \footnotesize{Force the graphics command list to be drawn now.}\\
 Clear  & \texttt{@[0 @}             & \footnotesize{Empty the graphics command list.}\\
 Colour & \texttt{@[1 r g b @} & \footnotesize{Set the current colour to \texttt{(r,g,b)}. Range: 0:1}\\
+Width  & \texttt{@[6 w @}         & \footnotesize{Set the line width to \texttt{w}. Range: 0.0 to 9.0}\\
+ \hline
 Fill   & \texttt{@[2 @}             & \footnotesize{Fill the graphics window with colour.}\\
 Move   & \texttt{@[3 x y @}   & \footnotesize{Move to \texttt{(x,y)} with the `pen' up. Coordinates: any float.}\\
 Draw   & \texttt{@[4 x y @}   & \footnotesize{Draw to \texttt{(x,y)} with the `pen' down.}\\
-Flush  & \texttt{@[5 @}             & \footnotesize{Force the graphics command list to be drawn now.}\\
-Width  & \texttt{@[6 w @}         & \footnotesize{Set the line width to \texttt{w}. Range: 0.0 to 9.0}\\
+MoveRelative   & \texttt{@[H dx dy @}   & \footnotesize{Move by \texttt{(dx,dy)} with the `pen' up. Coordinates: any float.}\\
+DrawRelative   & \texttt{@[I dx dy @}   & \footnotesize{Draw by \texttt{(dx,dy)} with the `pen' down.}\\
+Point & \texttt{@[D x y @}         & \footnotesize{Draw a point at \texttt{(x,y)}.}\\
+Circle & \texttt{@[F x y r @}         & \footnotesize{Draw a circle at \texttt{(x,y), x radius \texttt{r}}.}\\
 \hline
 Bounds   & \texttt{@[7 xlo ylo xhi yhi @}   & \footnotesize{Set the bounds to user coordinates \texttt{(xlo,ylo)} to \texttt{(xhi,yhi)}.}\\
 G-Bounds   & \texttt{@[8 xlo ylo xhi yhi @}   & \footnotesize{Set the graph bounds to user coordinates \texttt{(xlo,ylo)} to \texttt{(xhi,yhi)}.}\\
@@ -694,8 +711,6 @@ TextSize & \texttt{@[A sz @}         & \footnotesize{Set the text size to \textt
 TextAlign & \texttt{@[B al @}         & \footnotesize{Set the text align to \texttt{al}. \texttt{0:left, 1:center, 2:right, 3:title}.}\\
 TextFont & \texttt{@[C ft @}         & \footnotesize{Set the text font to \texttt{ft}. \texttt{0:serif, 1:sans, 2:fixed}.}\\
 Title & \texttt{@[E s @}         & \footnotesize{Draw text \texttt{s} as a title for a graph.}\\
-Point & \texttt{@[D x y @}         & \footnotesize{Draw a point at \texttt{(x,y)}.}\\
-Circle & \texttt{@[F x y r @}         & \footnotesize{Draw a circle at \texttt{(x,y), x radius \texttt{r}}.}\\
 \hline
 \end{tabular}
 \caption{New Graphics Commands}
@@ -724,234 +739,47 @@ axes and the X range is \emph{centred on} the supplied X range.
 The \texttt{title} text alignment centers the text in the display, as opposed to \texttt{center}, which centres
 the text on the current graphics position. Note that text to be drawn cannot contain the \texttt{@} character!
 
-\section{Example Host Code for Graphics Output}
-Python code to output \textbf{GTerm} graphics commands is shown below.
+\section{Host Libraries for Graphics Output}
+Python code that can output either the original or the new graphics commands is provided in
+\texttt{clientlibs/gterm\_driver.py}. This defines the GtermGraphics class, which as the following
+members:
 
-\begin{lstlisting}
-class GtermGraphics(object):
-    """
-    Output GTerm compatible graphics commands.
-    Fixed mode is for DIMFILM, basically. The default mode implements something like
-    a very simple standalone graphics library rather than a totally dumb device.
-    """
-
-    def __init__(self,lun,fixedmode=False):
-        self.lun = lun
-        self.fixedmode = fixedmode
-
-    def unavailable(self, msg):
-        print 'Function: {0}() is unavailable in fixed mode.'.format(msg)
-
-    def clamp(self,v,lo,hi):
-        return max(lo,min(v,hi))
-
-    def clear(self):
-        """
-        Empty the graphics display list. Clear the screen, in effect.
-        """
-        if self.fixedmode:
-            self.lun.write('\033[0z')
-        else:
-            self.lun.write('@[0@')
-
-    def colour(self,r,g,b):
-        """
-        Set the drawing colour.
-        """
-        if self.fixedmode:
-            ir = self.clamp(int(999.9*r),0,999)
-            ig = self.clamp(int(999.9*g),0,999)
-            ib = self.clamp(int(999.9*b),0,999)
-            s = '\033[1{0:03d}{1:03d}{2:03d}z'.format(ir,ig,ib)
-        else:
-            ir = self.clamp(r,0.0,1.0)
-            ig = self.clamp(g,0.0,1.0)
-            ib = self.clamp(b,0.0,1.0)
-            s = '@[1 {0:.3f} {1:.3f} {2:.3f} @'.format(ir,ig,ib)
-        self.lun.write(s)
-
-    def erase(self):
-        """
-        Fill the display with the drawing colour.
-        """
-        if self.fixedmode:
-            self.lun.write('\033[2z')
-        else:
-            self.lun.write('@[2@')
-
-    def pen(self,x,y,z):
-        if z > 0:
-            c = 4
-        else:
-            c = 3
-        if self.fixedmode:
-            ix = self.clamp(int(9999.9*x),0,9999)
-            iy = self.clamp(int(9999.9*y),0,9999)
-            s = '\033[{0:1d}{1:04d}{2:04d}z'.format(c,ix,iy)
-        else:
-            s = '@[{0} {1} {2} @'.format(c,x,y)
-        self.lun.write(s)
-
-    def move(self,x,y):
-        """
-        Move to user coordinates (x,y). In fixed mode, the user coordinates
-        are fixed at (0,0) to (1,1) corresponsding to the bootom laft and top right.
-        In "altmode", these are set by bounds() or gbounds().
-        """
-        self.pen(x,y,0)
-
-    def draw(self,x,y):
-        """
-        Draw to user coordinates (x,y).
-        """
-        self.pen(x,y,1)
-
-    def flush(self):
-        """
-        Ensure the contents of the display list are drawn.
-        """
-        if self.fixedmode:
-            self.lun.write('\033[5z')
-        else:
-            self.lun.write('@[5@')        
-
-    def width(self,w):
-        """
-        Set the line drawing width in pixels (as far as possible).
-        """
-        if self.fixedmode:
-            iw = self.clamp(int(99.9*w),0,999)
-            s = '\033[6{0:03d}z'.format(iw)
-        else:
-            iw = self.clamp(w,0.0,9.0)
-            s = '@[6 {0} @'.format(iw)
-        self.lun.write(s)
-
-    def bounds(self,xlo,ylo,xhi,yhi):
-        """
-        Set up the user coordinate system. Bottom left of the display is at (xlo,ylo)
-        and top right is at (xhi,yhi). If square_mode() has been previously issued, the
-        *X* bounds will be adjusted so that something that is sqaure in user coords appears
+\begin{itemize}
+\item Constructor: \texttt{gt = gterm\_driver.GtermGraphics(lun=sys.stdout, fixedmode=False)}
+\item \texttt{clear()} : Empty the graphics display list clearing the screen.
+\item \texttt{flush()} : Ensure the contents of the display list are drawn.
+\item \texttt{colour(self,r,g,b)} : Set the drawing colour, use values 0 to 1.
+\item \texttt{erase()} : Fill the display with the drawing colour.
+\item \texttt{width(w)} : Set the line drawing width in pixels (as far as possible).
+\item \texttt{bounds(xlo,ylo,xhi,yhi)} : Set up the user coordinate system in the default "altmode". 
+		Bottom left of the display is at \texttt{(xlo,ylo)}
+        and top right is at \texttt{(xhi,yhi)}. If \texttt{square\_mode()} has been previously issued, the
+        X bounds will be adjusted so that something that is square in user coordinates appears
         square in the display.
-        """
-        if self.fixedmode:
-            self.unavailable('bounds')
-        else:
-            s = '@[7 {0} {1} {2} {3} @'.format(xlo,ylo,xhi,yhi)
-            self.lun.write(s)
-
-    def gbounds(self,xlo,ylo,xhi,yhi):
-        """
-        Set the data range for simple graph drawing. The values specified are internally modified
-        based on "tick values" to get a generally pleasing range and starting value. If square_mode()
-        has previously been used, the *X* range is adjusted so that the tick intervals are the same on both
-        axes and the X range is *centered on* the supplied X range.
-        """
-        if self.fixedmode:
-            self.unavailable('gbounds')
-        else:
-            s = '@[8 {0} {1} {2} {3} @'.format(xlo,ylo,xhi,yhi)
-            self.lun.write(s)
-
-    def text(self,string):
-        """
-        Output text at the last move() location.
-        """
-        if self.fixedmode:
-            self.unavailable('text')
-        else:
-            s = '@[9 {0} @'.format(string)
-            self.lun.write(s)
-
-    def textsize(self,size):
-        """
-        Set the size of the text in somewhat arbitrary units. 14 is arguably normal size text.
-        """
-        if self.fixedmode:
-            self.unavailable('textsize')
-        else:
-            size = max(3,size)
-            s = '@[A {0} @'.format(size)
-            self.lun.write(s)
-        
-    def textalign(self,alignment):
-        """
-        Set how subsequent text() is aligned with the move() immediately preceding it.
-        alignment 'left' has the text() start there, 'right' has it end there and
-        center has it be centered there. 'dispcenter' has it centered in X on the display.
-        """
-        if self.fixedmode:
-            self.unavailable('textalign')
-        else:
-            aldict = {'left':0,'center':1,'right':2,'dispcenter':3}
-            try:
-                alcode = aldict[alignment]
-            except:
-                print 'Unknown alignment name:',alignment
-                return
-            s = '@[B {0} @'.format(alcode)
-            self.lun.write(s)
-
-    def textfont(self,fontname):
-        """
-        Choose a font type (very roughly). Only three choices, as this is not intended
-        to be a typesetting solution! 'serif', 'sans' and 'fixed'.
-        """
-        if self.fixedmode:
-            self.unavailable('textfont')
-        else:        
-            fndict = {'serif':0,'sans':1,'fixed':2}
-            try:
-                fncode = fndict[fontname]
-            except:
-                print 'Unknown font name:',fontname
-                return
-            s = '@[C {0} @'.format(fncode)
-            self.lun.write(s)
-
-    def point(self,x,y):
-        """
-        Draw a point at user coordinates (x,y).
-        """
-        if self.fixedmode:
-            self.unavailable('point')
-        else:         
-            s = '@[D {0} {1} @'.format(x,y)
-            self.lun.write(s)       
-
-    def title(self,string):
-        """
-        Draw a graph title in a fixed size and font centered on the display.
-        """
-        if self.fixedmode:
-            self.unavailable('title')
-        else:     
-            s = '@[E {0} @'.format(string)
-            self.lun.write(s)
-
-    def circle(self,x,y,r):
-        """
-        Draw a circle, center user coords (x,y), radius user X units r. This is always a circle, regardless of
-        the bounds set.
-        """
-        if self.fixedmode:
-            self.unavailable('circle')
-        else:         
-            s = '@[F {0} {1} {2}  @'.format(x,y,r)
-            self.lun.write(s)
-
-    def square_bounds(self,yes):
-        """
-        Modify subsequent bounds() and gbounds() calls so that if a square is drawn in user coordinates
-        it appears square on the display.
-        """
-        if self.fixedmode:
-            self.unavailable('square_bounds')
-        else:        
-            iyes = 1 if yes else 0
-            s = '@[G {0} @'.format(iyes)
-            self.lun.write(s)
-\end{lstlisting}
+\item \texttt{gbounds(xlo,ylo,xhi,yhi)} : Set the data range for simple graph drawing. The values specified are internally modified
+        based on "tick values" to get a generally pleasing range and starting value. If \texttt{square\_mode()}
+        has previously been used, the X range is adjusted so that the tick intervals are the same on both
+        axes and the X range is centred on the supplied X range.
+\item \texttt{square\_bounds(yes)} : Modify subsequent \texttt{bounds()} and \texttt{gbounds()} calls so that if a 
+		square is drawn in user coordinates it appears square on the display.
+\item \texttt{move(x,y)} : Move to user coordinates \texttt{(x,y)}. In fixed mode, the user coordinates
+        are fixed at (\texttt{0,0)} to \texttt{(1,1)} corresponding to the bottom left and top right.
+        In the default "altmode", these are set by \texttt{bounds()} or \texttt{gbounds()}.
+\item \texttt{draw(x,y)} : Draw to user coordinates \texttt{(x,y)}.
+\item \texttt{moverel(dx,dy)} : Move from the current position by \texttt{(dx,dy)} in user coordinates.
+\item \texttt{drawrel(dx,dy)} : Draw from the current position by \texttt{(dx,dy)} in user coordinates.
+\item \texttt{point(x,y)} : Draw a point at user coordinates (x,y), using a "plus" shaped symbol.
+\item \texttt{circle(x,y,r)} : Draw a circle, center at user coordinates \texttt{(x,y)}, radius user X units \texttt{r}. 
+		This is always a circle, regardless of the bounds set.
+\item \texttt{text(string)} : Output text at the last \texttt{move()} location.
+\item \texttt{textsize(size)} : Set the size of the text in somewhat arbitrary units. 14 is arguably normal size text.
+\item \texttt{textfont(fontname)} : Choose a font type (very roughly). 
+        Only three choices: \texttt{'serif'}, \texttt{'sans'} and \texttt{'fixed'}.
+\item \texttt{textalign(alignment)} : Set how subsequent \texttt{text()} is aligned with the \texttt{move()} immediately preceding it.
+        Settting alignment to \texttt{'left'} has the \texttt{text()} start there, \texttt{'right'} has it end there and
+        \texttt{'center'} has it be centred there. Finally,\texttt{ 'dispcenter'} has it centred in X on the display.
+\item \texttt{title(string)} : Draw a graph title in a fixed size and font, centred on the display.
+\end{itemize}
 
 \noindent A screen shot of the \textbf{GTerm} graphics display drawn using this library is shown in Figure \ref{fig:graf1}.
 \begin{figure}
@@ -960,6 +788,10 @@ class GtermGraphics(object):
 	\caption{\textbf{GTerm} Graphics from Simple Test Program}
 	\label{fig:graf1}
 \end{figure}
+
+\newpara
+For APL, there is a workspace which has equivalents of all the Python library functions plus graph plotting and some
+other utility functions. This is described in Section~\ref{aplgraf}.
 
 
 \section{APL and \textbf{GTerm}}\label{aplinfo}
@@ -1114,7 +946,7 @@ I think the only emulator of a terminal that natively supported APL is Rene Rich
 B-codes are what \textbf{GTerm} sends to the mainframe when an APL character is `typed', and what the
 mainframe sends back to \textbf{GTerm} to display an APL character. 
 
-\subsection{APL and graphics}
+\subsection{APL and graphics}\label{aplgraf}
 Prior to \textbf{GTerm} V0.4, the best that could 
 be done was to write out \textbf{GPLOT} commands to a file and have \textbf{GPLOT} read that
 file to draw graphs. The new graphics commands make it feasible to output graphics directly from APL,
@@ -1122,16 +954,42 @@ and a workspace has been constructed -- \texttt{WSPLOT} -- which provides
 the following functions:
 
 \begin{itemize}
+\item \texttt{GFLS} : Flush output to GTerm (not really needed in user code).
 \item \texttt{GCLR} : Empty the graphics commands list.
 \item \texttt{GCOL r g b} : Set the current drawing colour using 0 to 1 range RGB values.
 \item \texttt{GFIL} : Fill the display with the current colour -- an erase operation.
-\item \texttt{GFLS} : Flush output to GTerm (not really needed in user code).
-\item \texttt{GBNS xlo ylo xhi yhi} : Set the G-Bounds for subsequent plots. This draws the axes, labels ticks and draws a grid.
 \item \texttt{GNEW}: Prepare to draw a new graph, black on a white background, replacing a tedious \texttt{GCLR}, \texttt{GCOL}, \texttt{GFIL}, \texttt{GCOL} sequence.
+\item \texttt{GWID w} : Set the width of drawn lines.
+\item \texttt{GBNS xlo ylo xhi yhi} : Set the G-Bounds for subsequent plots. This draws the axes, labels ticks and draws a grid.
+\item \texttt{GDBNS xlo ylo xhi yhi} : Set the G-Bounds for low level drawing. This only sets a coordinate system. It draws nothing.
+\item \texttt{GSQBNS} : Subsequent \texttt{GBNS} and \texttt{GDBNS} will internally adjust the supplied bounds so that
+circles are drawn as circles, etc.
+\item \texttt{GVBNS} : Cancel the bounds adjustment started by \texttt{GSQBNS}.
 \item \texttt{x GPLOT y} : Plot \texttt{y} against \texttt{x} (equal length vectors). The bounds are automatically set based on the ranges of \texttt{x} and \texttt{y}.
-item \texttt{x GPLOTS y} : Plot \texttt{y} against \texttt{x}, but leave the bounds unchanged. This allows multiple plots on the same axes.
-\item \texttt{GMOV x y} : Low level move.
-\item \texttt{GDRW x y} : Low level draw line to.
+\item \texttt{x GPLOTS y} : Plot \texttt{y} against \texttt{x}, but leave the bounds unchanged. This allows multiple plots on the same axes.
+\item \texttt{GMOV x y} : Low level move to \texttt{(x,y).}
+\item \texttt{GDRW x y} : Low level draw line to \texttt{(x,y).}
+\item \texttt{GMOV x y} : Low level relative move by \texttt{(x,y).}
+\item \texttt{GDRW x y} : Low level relative draw by \texttt{(x,y).}
+\item \texttt{GPOINT x y} : Draw a point marker at \texttt{(x,y).}
+\item \texttt{GCIRCLE x y r} : Draw a circle, center \texttt{(x,y)}, radius \texttt{r}. Note: this will always be drawn as a true
+circle even if the bounds are not square! Use only when  \texttt{GSQBNS} is in effect!
+\item \texttt{GTITLE s} : Title the graph with string \texttt{s}.
+\item \texttt{GTEXT s} : Draw string \texttt{s} at the current position. 
+\item \texttt{GTEXTSZ h} : Set the height of drawn characters to \texttt{h} user units.
+\item \texttt{GTEXTAL c} : Set the string alignment mode. Valid integer values for \texttt{c} are:
+    \begin{itemize}
+    \item \texttt{0} : Left aligned, starting at the current position.
+    \item \texttt{1} : Centered on the current position.
+    \item \texttt{2} : Right aligned, ending at the current position.
+    \item \texttt{3} : Centered on the middle of the display in \texttt{x}, at the current position in \texttt{y}.
+    \end{itemize}
+\item \texttt{GTEXTFN c} : Set the font style to use. Valid integer values for \texttt{c} are:
+    \begin{itemize}
+    \item \texttt{0} : Serif.
+    \item \texttt{1} : Sans.
+    \item \texttt{2} : Fixed width.
+    \end{itemize}
 \item \texttt{LINS start end step} : Return a vector of  length \texttt{step} values with numbers evenly spaced from \texttt{start} to \texttt{end} (inclusive). Modelled on Numpy \texttt{linspace()}.
 \end{itemize}
 
@@ -1139,6 +997,10 @@ item \texttt{x GPLOTS y} : Plot \texttt{y} against \texttt{x}, but leave the bou
 The WSPLOT workspace is constructed from APL source using the batch job found in \texttt{wsplot.job}. 
 This makes good use of the `batch' mode APL character representations, which may be a good way of storing 
 APL programs external to NOS.
+
+\newpara
+This job may be submitted in any of the usual ways, including via RJE. You will need to change the user
+and password in the job card to suit your system.
 
 \newpara
 A simple example of graph plotting using these functions is:
@@ -1153,7 +1015,9 @@ CLEAR WS
       ▯load 'wsplot'
 WSPLOT 4/09/20 12:05:03
       )fns
-GBNS    GCLR    GCOL    GDRW    GFIL    GFLS    GMOV    GNEW    GPLOT   GPLOTS  GWID    LINS
+GBNS    GCIRCLE GCLR    GCOL    GDBNS   GDRW    GDRWR   GFIL    GFLS    GMOV    GMOVR
+GNEW    GPLOT   GPLOTS  GPOINT  GSQBNS  GTEXT   GTEXTAL GTEXTFN GTEXTSZ GTITLE  
+GVBNS   GWID    LINS
       gnew
       x←lins 0 1 11
       y←x*2
@@ -1203,4 +1067,92 @@ The space separated fields are:
 
 \newpara
 The \texttt{gtermhostinfo.txt} file lives in the user's home directory.
+
+
+\section{Extras}
+To complement \textbf{GTerm}, some extra, terminal related, items are included. 
+
+\subsection{The \texttt{ctelnet} program}
+For retro-computing applications, the telnet client
+program that comes with the operating system is excessively complex. It is also often not particularly well 
+maintained (I have seen bugs fixed in one release come back in a later one, for example). Telnet is probably a low priority these days -- as we
+are constantly reminded, it is not `secure'. Perhaps it will disappear altogether in the not too distant future.
+
+\newpara
+The \texttt{ctelnet} program is a very simple replacement written in C which should work on any Unix-like system 
+and doesn't rely on anything that might
+ever go away. It is all that is needed to let terminal emulators communicate with the limited, application specific, `telnet servers' that are built in to
+historic computer simulators.
+
+\newpara
+The source can be found in: \texttt{extras/ctelnet} and it can be built and installed on either Linux or macOS by using:\\
+\texttt{\$ ./build.sh}\\
+The binary will be installed in \texttt{/usr/local/bin}. On macOS the command line Xcode development tools may need to be installed first. 
+
+\newpara
+There are two mandatory arguments:
+\begin{verbatim}
+ctelnet address port
+\end{verbatim}
+The address should be a dotted decimal IPV4 address or a host name which can be resoled to such an address. The port should be the
+port number on which the desired server is listening. The standard telnet port number is 23. There are other options, including traffic logging,
+which may be useful for debugging, but they are rarely needed. Please refer to the source code for details.
+
+\subsection{Xterm for NOS 2.8}
+Xterm is still a very capable terminal emulator and may still be the most faithful VT100 simulator. It is also highly configurable. It can be used on macOS
+via XQuartz and on Linux systems that have replaced the traditional X11 server with Wayland via XWayland.
+
+\begin{figure}
+	\centering
+    \begin{verbatim}
+                 NCDX NOS Terminal Definition Key Mappings                   
+                                                                              
+                 Key       Modifier        Action                             
+             +------------------------------------------------+               
+             | F1 - F12  |          | F1 - F12                |               
+             |           | Shift    | F1 - F12 Shifted        |               
+             |------------------------------------------------|               
+             | F1 - F4   | Ctrl     | F13 - F16               |              
+             |           | Alt      | F13 - F16 Shifted       |               
+             |------------------------------------------------|               
+             | Insert    |          | Enter Insert Mode       |              
+             |           | Shift    | Insert Line             |               
+             |           | Ctrl     | Insert Character        |               
+             |------------------------------------------------|               
+             | Delete    |          | Delete Character        |               
+             |           | Shift    | Delete Line             |               
+             |------------------------------------------------|               
+             | Home      |          | Put Cursor on Home Line |               
+             |------------------------------------------------|               
+             | End       |          | Exit Insert Mode        |              
+             |           | Ctrl     | Delete to End of Line   |              
+             |------------------------------------------------|               
+             | Page Up   |          | Previous Screen         |               
+             |           | Shift    | Top                     |               
+             |           | Ctrl     | Half Page Forward       |              
+             |------------------------------------------------|               
+             | Page Down |          | Next Screen             |               
+             |           | Shift    | Bottom                  |              
+             |           | Ctrl     | Half Page Backward      |               
+             +------------------------------------------------+   
+	\end{verbatim}
+	\caption{Key pad definitions for \texttt{nosterminal.sh}}
+	\label{fig:nost}
+\end{figure}
+
+\newpara
+Many years ago, Gerard van der Grinten created an X resources file for Xterm that redefined keys so that it looked to NOS like a Network Computing Devices (NCD) X terminal, for which NOS has a terminal definition available. This is the basis of \texttt{nosterminal.sh} which is to be found in
+\texttt{extras/xterm}. When run, this should start Xterm configured as an NCDX 15/19 terminal which has 132 x 43 lines, which is quite a nice
+size. For example:
+\begin{verbatim}
+./nosterminal.sh mac1 23
+\end{verbatim}
+will open a terminal on host \texttt{mac1} using port 23. This uses \texttt{ctelnet} as the telnet client.
+\begin{verbatim}
+./nosterminal.sh -h
+\end{verbatim}
+will show help information, including key mapping information (see Figure~\ref{fig:nost}).
+The \texttt{nosterminal.sh} is intended to be quite self contained (apart from \texttt{ctelnet}) and hence hopefully portable.
+It does need a full size keyboard, though, so it isn't suitable for unaugmented laptops.
+
 \end{document}
