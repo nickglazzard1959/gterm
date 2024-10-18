@@ -75,7 +75,7 @@ window:
     lines: 43
 
   # Window title
-  title: Alacritty NCDXT MacBook
+  title: Alacritty NCDXT Laptop
 
 # Font configuration
 font:
@@ -170,5 +170,5 @@ key_bindings:
   - { key: Right,       mods: Alt,                       chars: "\x1b[K"           }
   - { key: Key3,        mods: Alt,                       chars: "#"                }
 EOF
-) > /tmp/alacritty-ncdxt-macbookpro.yml
-/usr/local/bin/alacritty --config-file /tmp/alacritty-ncdxt-macbookpro.yml -e /usr/local/bin/ctelnet ${host} ${port}
+) > /tmp/alacritty-ncdxt-laptop.yml
+/usr/local/bin/alacritty --config-file /tmp/alacritty-ncdxt-laptop.yml -e /usr/local/bin/ctelnet ${host} ${port}
