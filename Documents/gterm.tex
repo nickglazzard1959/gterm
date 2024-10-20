@@ -1070,7 +1070,11 @@ The \texttt{gtermhostinfo.txt} file lives in the user's home directory.
 
 
 \section{Extras}
-To complement \textbf{GTerm}, some extra, terminal related, items are included. 
+To complement \textbf{GTerm}, some extra, terminal related, items are included. \textbf{GTerm} is not capable of being used with \texttt{FSE} and
+other NOS `screen' based applications, so another terminal emulator paired with \textbf{GTerm} is the most comfortable way of doing
+tasks such as software development. The \texttt{extras} directory tree provides a simplified \texttt{telnet} replacement program and configuration files
+for three terminal emulator programs that make it easy to use NOS in `screen' mode on Linux and macOS. They may work on BSD versions too,
+but this has not been tested.
 
 \subsection{The \texttt{ctelnet} program}
 For retro-computing applications, the telnet client
@@ -1094,9 +1098,13 @@ There are two mandatory arguments:
 \begin{verbatim}
 ctelnet address port
 \end{verbatim}
-The address should be a dotted decimal IPV4 address or a host name which can be resoled to such an address. The port should be the
+The address should be a dotted decimal IP~V4 address or a host name which can be resolved to such an address. The port should be the
 port number on which the desired server is listening. The standard telnet port number is 23. There are other options, including traffic logging,
 which may be useful for debugging, but they are rarely needed. Please refer to the source code for details.
+
+\newpara
+There is a fairly substantial modification of \texttt{ctelnet} for the Haiku operating system which can be found in \texttt{ctelnet\_haiku.c}.
+This was last tested in 2022 with Haiku Beta 4 and I don't know if it would still work with the latest Haiku. 
 
 \subsection{Xterm for NOS 2.8}
 Xterm is still a very capable terminal emulator and may still be the most faithful VT100 simulator. It is also highly configurable. It can be used on macOS
@@ -1154,5 +1162,54 @@ will open a terminal on host \texttt{mac1} using port 23. This uses \texttt{ctel
 will show help information, including key mapping information (see Figure~\ref{fig:nost}).
 The \texttt{nosterminal.sh} is intended to be quite self contained (apart from \texttt{ctelnet}) and hence hopefully portable.
 It does need a full size keyboard, though, so it isn't suitable for unaugmented laptops.
+
+\subsection{iTerm2 for NOS 2.8}
+For macOS, iTerm2 is an excellent terminal emulator. It is available here:\\
+\url{https://iterm2.com}.\\
+It is open source and the source code can be found here:\\
+\url{https://github.com/gnachman/iTerm2}
+
+\newpara
+When running on a laptop, some fairly arbitrary mapping of keys to functions is necessary.
+Since my primary "daily driver" computer is a Mac Book Pro running macOS, I came up with such a mapping many years ago. It is pretty
+idiosyncratic, but it does work. Again, the emulated terminal type is an NCD X terminal. (I do not have a configuration for
+full size keyboards, unfortunately).
+
+\newpara
+The required configuration is stored in the file: \texttt{extras/iTerm2/nosterminal.json}. This can be loaded as follows:
+\begin{enumerate}
+\item Find \texttt{Profiles} in the iTerm2 Menu Bar.
+\item Select \texttt{Open Profiles} from the drop down menu.
+\item Press the \texttt{Edit Profiles} button in the \texttt{Profiles} dialog.
+\item Press the \texttt{Other Actions} drop down menu button.
+\item Choose \texttt{Import JSON Profiles}.
+\item Navigate to the location of \texttt{nosterminal.json} and select it.
+\end{enumerate}
+
+\begin{figure}
+	\centering
+	\includegraphics[scale=0.9]{../extras/iTerm2/fse-mac-iterm2.eps}
+	\caption{Key definitions for iTerm2 on a laptop}
+	\label{fig:it2map}
+\end{figure}
+
+\newpara
+The key mappings this implements are shown in Figure~\ref{fig:it2map}. You do get used to them \ldots eventually!
+
+\subsection{Alacritty for NOS 2.8}
+Alacritty is an open source terminal emulator, perhaps best known for being written in Rust and for being very fast. Neither of these
+`claims to fame' are particularly relevant, but it is a very good, cross-platform, terminal emulator. It is available here:\\
+\url{https://github.com/alacritty/alacritty}.
+
+\newpara
+There are two Bash shell scripts in \texttt{extras/alacritty} that run Alacritty with suitable set-ups, one for desktop machines with full
+size keyboards and one for laptops. 
+\begin{itemize}
+\item \texttt{nosterminal-desktop.sh} is for full size keyboards. The key mapping is the same as for Xterm, shown in Figure~\ref{fig:nost}.
+\item \texttt{nosterminal-laptop.sh} is for laptop keyboards. The key mapping is the same as for iTerm2, shown in Figure~\ref{fig:it2map}.
+\end{itemize}
+
+\newpara
+Although I've used iTerm2 on macOS and Xterm on Linux since I started using NOS, Alacritty may replace them both going forward.
 
 \end{document}

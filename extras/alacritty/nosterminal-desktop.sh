@@ -85,12 +85,14 @@ window:
   # Window title
   title: Alacritty NCDXT Standard Keyboard
 
-# Colors (based on Ethan Schoonover-s Solarized colour scheme)
+# Colors (based on Ethan Schoonover-s Solarized colour scheme -- or not.)
 colors:
   # Default colors
   primary:
-    background: '#fdf6e3'
-    foreground: '#586e75'
+    #background: '#fdf6e3'
+    #foreground: '#586e75'
+    background: '#003863'
+    foreground: '#f0f0f0'
 
   cursor:
     text: CellBackground
