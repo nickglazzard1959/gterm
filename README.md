@@ -93,6 +93,10 @@ For a completely empty machine but with Homebrew already installed:
 3. Install GTerm in that virtual environment.
 - `pip install .`
 
+As Homebrew discontinues support for older macOS versions when Apple does so, 
+it might be preferable to use Mac Ports instead of Homebrew as the package
+manager if you are using older hardware.
+
 Running
 -------
 
@@ -132,16 +136,33 @@ The allowed system type values are:
 - `windows` : For use with Windows systems, but not tested with any
   version newer than Windows 7.
 
-Extras
-------
+Host libraries
+--------------
 
-Two directories contain things related to GTerm.
+The directory `hostlibs` provides Python code that can output graphics
+commands for GTerm on platforms that support Python 3.
 
+It also supplies a NOS batch job that creates an APL workspace with graphics
+functions that all graph plotting and general purpose drawing from APL.
+
+Additional items
+----------------
+
+These complement GTerm in various ways.
+
+## Tools
 The tools directory contains programs useful for modifying GTerm
 for other purposes. See the documentation in the Documents
 subdirectory for more information.
 
-The ctelnet directory contains a very barebones telnet client that
+## Extras
+This directory tree provides a simplified replacement for telnet and
+configuration files for three different terminal
+emulators to make them work with NOS 2.8 in `screen mode' -- e.g.
+for use with the Full Screen Editor (FSE).
+
+### ctelnet
+The `ctelnet` sub-directory contains a very barebones telnet client that
 does all that needs to be done for retrocomputing applications. The
 telnet client supplied with modern systems (if any) has many complex
 features that are really not needed for talking to simulators over
@@ -149,9 +170,9 @@ a LAN. It also has tricky configuration files and is often buggy
 as telnet clients are very low priority and frowned on for
 security reasons.
 
-The ctelnet program is intended for use with terminal emulators other than
-GTerm (which has a telnet client built in) such as XTerm or iTerm2.
-It is simple enough to build it on any Linux or macOS system using the
+The `ctelnet` program is intended for use with terminal emulators other than
+GTerm (which has a telnet client built in) such as Xterm or iTerm2.
+It is simple enough that it can be built on any Linux or macOS system using the
 `build.sh` script.
 ```
 ctelnet hostname_or_IP port_number
@@ -160,6 +181,10 @@ will connect to a telnet server on a host at a given port. There
 are other options, but they are not normally needed. When starting
 a terminal emulator, ctelnet should be given as the command for
 the emulator to execute.
+
+### Terminal emulator configurations and shell scripts
+The sub-directories `xterm`, `iTerm2` and `alacritty` provide materials for 
+using the Xterm, iTerm2 and Alacritty terminal emulators with NOS.
 
 Documentation
 -------------
