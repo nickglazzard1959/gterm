@@ -28,8 +28,7 @@ Features
 - Telnet functionality is built in.
 - It is a "pure Python" application intended for use in a
   Python environment.
-- Linux (at least Debian 12 and Ubuntu 22) and macOSX (at least 11.x)
-  are supported.
+- Linux and macOS are supported.
 
 Drawbacks
 ---------
@@ -37,14 +36,18 @@ Drawbacks
 - There is no character cell addressability. A "glass teletype"
   model is implemented for text entry and display.
 - It can only be used with systems that have a Telnet server to
-  which it can connect.
+  which it can connect. The primary intended application for
+  this program is to connect to the DtCyber simulator which uses
+  the Telnet protocol for terminal communications.
 - The graphics command formats are unique to GTerm and GPLOT.
   (APL code can also generate these graphics commands).
 - Installation requires a Python environment (a "con" as well
   as a "pro").
 - It is definitely not intended to replace "normal" terminal
   emulators for general use.
-- No version of the Windows operating system is supported.
+- No version of the Windows operating system is supported. This
+  software will not work on Windows due to the behaviour of
+  `select()` on that system and probably for other reasons too.
 
 Installation on Debian/Ubuntu Linux
 -----------------------------------
@@ -205,4 +208,7 @@ Screenshots
 ![gterm-gplot-graphics](https://github.com/nickglazzard1959/gterm/assets/27016608/38b64e75-b387-4565-b260-3390168d1b56)
 
 
+# Acknowledgements
 
+Thanks to Gerard van der Grinten for the NCDXT key bindings used in the terminal
+emulator configurations. Used with permission.
