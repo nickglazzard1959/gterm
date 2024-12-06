@@ -146,7 +146,7 @@ The directory `hostlibs` provides Python code that can output graphics
 commands for GTerm on platforms that support Python 3.
 
 It also supplies a NOS batch job that creates an APL workspace with graphics
-functions that all graph plotting and general purpose drawing from APL.
+functions that provide graph plotting and general purpose drawing from APL.
 
 Additional items
 ----------------
