@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "gterm"
-version = "0.8.5"
+version = "0.8.7"
 description = "Graphics and APL terminal primarily for NOS 2 on CDC Cybers"
 readme = "README.md"
 requires-python = ">=3.9"
@@ -12,11 +12,11 @@ keywords = ["gterm", "retrocomputing"]
 license = {file = "LICENSE"}
 
 authors = [
-{name = "Nick Glazzard", email = "nick@hccc.org.uk"}
+{name = "Nick Glazzard", email = "nick.nos28@gmail.com"}
 ]
 
 maintainers = [
-{name = "Nick Glazzard", email = "nick@hccc.org.uk"}
+{name = "Nick Glazzard", email = "nick.nos28@gmail.com"}
 ]
 
 classifiers = ["Development Status :: 4 - Beta",
@@ -34,7 +34,8 @@ dependencies = ['PyOpenGL',
                 'Numpy<2',
                 'pycairo==1.16.0',
                 'clipman',
-                'pyaudio'
+                'pyaudio',
+                "pyobjc-framework-Quartz; platform_system == 'Darwin'"
                ]
 
 [project.scripts]

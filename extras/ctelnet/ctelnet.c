@@ -1,11 +1,12 @@
 /* http://l3net.wordpress.com/2012/12/09/a-simple-telnet-client/ */
-// Considerably modified by Nick Glazzard, 2019,2021.
+// Considerably modified by Nick Glazzard, 2019,2021,2025.
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
 #include <sys/socket.h>
+#include <sys/errno.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <netdb.h>
@@ -14,6 +15,10 @@
 #include <stdarg.h>
 #include <time.h>
 #include <ctype.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <sys/time.h>
+#include <inttypes.h>
 
 // Defines
  
@@ -184,7 +189,6 @@ static int send_buf( int sock, unsigned char* buf, int n_send )
 
   // Record if it is a newline (LF) character (from return key usually).
   int is_newline = (buf[0] == '\n');
-  int is_cr = (buf[0] == '\r');
 
   // Apply any character transformations here.
   // \r -> CR LF.
@@ -244,105 +248,44 @@ int hostname_to_ip( char* hostname, char* ip )
   
   return 1;
 }
- 
-int main(int argc , char *argv[])
+
+int fifo_exists(const char *path)
 //-------------------------------
-/// @brief Implement a minimal but useful telnet client.
-/// @param argc Command line argument count.
-/// @param argv Command line word string argument pointers.
-/// @return 0 if OK, else condition code.
+/// @brief See if a FIFO (named pipe "file") exists.
+///
+/// @param path Name of the FIFO (named pipe "file").
+/// @return 1 if exists, 0 otherwise.
 {
-  int sock;
-  struct sockaddr_in server;
+  struct stat path_stat;
+
+  // Check if file exists
+  if (stat(path, &path_stat) == -1) {
+    return 0;
+  }
+
+  // Check if file is a FIFO
+  if (S_ISFIFO(path_stat.st_mode)) {
+    return 1;
+  }
+
+  return 0;
+}
+
+int standard_loop(int sock, int fin_fifo)
+//---------------------------------------
+/// @brief Main character processing loop (where select() works on fd-s other than sockets).
+///
+/// @param sock Socket for connection to host.
+/// @param fin_fifo Input FIFO fd for scripting.  
+/// @return 0 if normal exit, 1 otherwise.
+{
   unsigned char buf[BUFLEN + 1];
+  ssize_t n_send = 0;
   int len;
   int ilist;
-  int port;
-  int ia;
-  ssize_t n_send = 0;
-  char* host_dotted = NULL;
-  char ip_from_hostname[20];
-
-  printf( "\nCTELNET: Minimal telnet client V0.2.\n" );
-    
-  // Parse command line.
-  if( argc < 3 ){
-    fprintf(stderr, "ERROR: Usage: %s address port [--crlf --cr_after_lf --lfafternl --log --slow]\n", argv[0]);
-    return 1;
-  }
-  host_dotted = argv[1];
-  port = atoi(argv[2]);
-
-  // If host_dotted doesn't look like an IP address, treat it as a host name.
-  if( ! isdigit(host_dotted[0]) ){
-    if( hostname_to_ip( host_dotted, ip_from_hostname ) != 0 ){
-      fprintf(stderr, "ERROR: Failed to convert host name to IP address.\n");
-      return 33;
-    }
-    host_dotted = ip_from_hostname;
-  }
-
-  for( ia=3; ia<argc; ia++ ){
-    if( !strcmp( argv[ia], "--crlf" ) ){
-      send_crlf_at_newline = 1;
-      printf("INFO: --crlf is set.\n");
-    }
-    else if( !strcmp( argv[ia], "--cr_after_lf" ) ){
-      send_cr_after_lf = 0;
-      printf("INFO: --cr_after_lf is set.\n");
-    }
-    else if( !strcmp( argv[ia], "--lfafternl" ) ){
-      show_lf_after_newline = 1;
-      printf("INFO: --lfafternl is set.\n");
-    }
-    else if( !strcmp( argv[ia], "--log" ) ){
-      char* homedir = getenv("HOME");
-      if( homedir != NULL ){
-        time_t now = time(0);
-        char fullname[1024];
-        snprintf(fullname,1023,"%s/ctelnet_log_%ld.txt",homedir,now);
-        flog = fopen(fullname,"w");
-        printf("INFO: --log to %s is set.\n",fullname);
-      }
-      if( flog == NULL ){
-        fprintf(stderr, "ERROR: Cannot create log file.\n");
-        return 1;
-      }
-    }
-    else if( !strcmp( argv[ia], "--slow" ) ){
-      slow_pause = 5;
-    }
-    else{
-      fprintf( stderr, "WARNING: Unknown option: %s (ignored)\n", argv[ia]);
-    }
-  }
- 
-  // Create socket.
-  sock = socket(AF_INET , SOCK_STREAM , 0);
-  if (sock == -1) {
-    perror("ERROR: Could not create socket.");
-    logit("ERROR: Could not create socket.");
-    return 1;
-  }
- 
-  server.sin_addr.s_addr = inet_addr(host_dotted);
-  server.sin_family = AF_INET;
-  server.sin_port = htons(port);
- 
-  // Connect to host.
-  if (connect(sock, (struct sockaddr *)&server , sizeof(server)) < 0) {
-    perror("ERROR: Could not connect().");
-    logit("ERROR: Failed to connect().\n");
-    return 1;
-  }
-  puts("INFO: Connected ...\n");
-  logit("INFO: Connected ...\n");
- 
-  // Set terminal to raw mode.
-  terminal_set();
-  atexit(terminal_reset);
-     
   struct timeval ts;
+
+  // Initial select wait.
   ts.tv_sec = 1; // 1 second
   ts.tv_usec = 0;
 
@@ -355,6 +298,7 @@ int main(int argc , char *argv[])
     if (sock != 0)
       FD_SET(sock, &fds);
     FD_SET(0, &fds);
+    FD_SET(fin_fifo, &fds);
  
     // Wait for data from either host or terminal emulator.
     int nready = select(sock + 1, &fds, (fd_set *) 0, (fd_set *) 0, &ts);
@@ -370,7 +314,7 @@ int main(int argc , char *argv[])
       ts.tv_usec = 0;
     }
 
-    // From host:
+    // From host (for screen output):
     else if (sock != 0 && FD_ISSET(sock, &fds)) {
           
       // Read a single byte.
@@ -381,7 +325,7 @@ int main(int argc , char *argv[])
         return 1;
       }
       else if (rv == 0) {
-        printf("INFO: Connection closed by the remote end\n\r");
+        printf("\nINFO: Connection closed by the remote end\n\r");
         logit("INFO: Connection closed by the remote end (case 1)\n");
         return 0;
       }
@@ -402,7 +346,7 @@ int main(int argc , char *argv[])
           return 1;
         }
         else if (len == 0) {
-          printf("INFO: Connection closed by the remote end\n\r");
+          printf("\nINFO: Connection closed by the remote end\n\r");
           logit("INFO: Connection closed by the remote end (case 2)\n");
           return 0;
         }
@@ -420,7 +364,7 @@ int main(int argc , char *argv[])
       }
     }
 
-    // From terminal emulator:
+    // From terminal emulator (keyboard input):
     else if (FD_ISSET(0, &fds)) {
 
       // Read all available bytes from the terminal emulator.
@@ -428,7 +372,7 @@ int main(int argc , char *argv[])
       if( n_send < 0 ){
         perror("ERROR: Could not read() from stdin (keyboard).");
         logit( "ERROR: Failed to read() from stdin (keyboard).\n");
-        return 0;
+        return 1;
       }
 
       // EOF on keyboard?
@@ -443,11 +387,325 @@ int main(int argc , char *argv[])
           return 1;
         }
       }
+    }
+
+    // From named pipe (scripted input):
+    else if (FD_ISSET(fin_fifo, &fds)) {
+      //fprintf(stderr, "\nHERE\n");
+
+      // Read all available bytes from the terminal emulator.
+      n_send = read(fin_fifo, buf, BUFLEN);
+      //fprintf(stderr,"\nn_send = %zd\n", n_send);
+      if( n_send < 0 ){
+        if( errno != EAGAIN ){
+          perror("ERROR: Could not read() from input FIFO.");
+          logit( "ERROR: Failed to read() from input FIFO.\n");
+          return 0;
+        }
+      }
+
+      // Send everything that has been read.
+      else{
+        if( 0 ){
+          int i;
+          for( i=0; i<n_send; i++ ){
+            fprintf(stderr,"%2.2x\n",buf[i]);
+          }
+        }
+
+        if( n_send > 0 ){
+          if( send_buf( sock, buf, (int)n_send ) != 0 ){
+            return 1;
+          }
+        }
+      }      
     } // Data to send.
     
   } // Loop forever.
+}
 
-  // Close socket and return condition code 0.
+int non_blocking_loop(int sock, int fin_fifo)
+//-------------------------------------------
+/// @brief Main character processing loop (where select() only works with sockets).
+///
+/// @param sock Socket for connection to host.
+/// @param fin_fifo Input FIFO fd for scripting.
+/// @return 0 if normal exit, 1 otherwise.
+{
+  unsigned char buf[BUFLEN + 1];
+  ssize_t n_send = 0;
+  int len;
+  int ilist;
+  struct timeval ts;
+
+  // Initial select wait.
+  ts.tv_sec = 0;
+  ts.tv_usec = 50000; // 50ms.
+
+  // Make stdin non-blocking.
+  fcntl(0, F_SETFL, fcntl(0, F_GETFL) | O_NONBLOCK);
+
+  // Loop forever ...
+  while (1) {
+      
+    // Setup select()
+    fd_set fds;
+    FD_ZERO(&fds);
+    if (sock != 0)
+      FD_SET(sock, &fds);
+ 
+    // Wait for data from host.
+    int nready = select(32, &fds, (fd_set *) 0, (fd_set *) 0, &ts);
+    if (nready < 0) {
+      perror("ERROR: Could not select().");
+      logit("Failed to select().\n");
+      return 1;
+    }
+    
+    // Nothing from host. See if anything from terminal emulator.
+    else if (nready == 0) {
+
+      // Read all available bytes from the input FIFO. This may be 0.
+      n_send = read(fin_fifo, buf, BUFLEN);
+      if( n_send < 0 ){
+        if( errno != EAGAIN ){
+          perror("ERROR: Could not read() from stdin (keyboard).");
+          logit( "ERROR: Failed to read() from stdin (keyboard).\n");
+          return 1;
+        }
+      }
+
+      // Send anything that has been read from the FIFO. OK if nothing has.
+      else if( n_send > 0 ){
+        if( send_buf( sock, buf, (int)n_send ) != 0 ){
+          return 1;
+        }
+      }
+
+      // Read all available bytes from the terminal emulator. Expect EAGAIN if no
+      // bytes are available.
+      n_send = read(fileno(stdin), buf, BUFLEN);
+      if( n_send < 0 ){
+        if( errno != EAGAIN ){
+          perror("ERROR: Could not read() from stdin (keyboard).");
+          logit( "ERROR: Failed to read() from stdin (keyboard).\n");
+          return 1;
+        }
+      }
+
+      // EOF on keyboard?
+      else if( n_send == 0 ){
+        logit( "INFO: EOF on stdin (keyboard).\n");
+        return 0;
+      }
+
+      // Send everything that has been read from the keyboard.
+      else if( n_send > 0 ){
+        if( send_buf( sock, buf, (int)n_send ) != 0 ){
+          return 1;
+        }
+      }
+
+      // Have select wait for 50ms again.
+      ts.tv_sec = 0;
+      ts.tv_usec = 50000;
+    }
+
+    // Something from the host:
+    else if (sock != 0 && FD_ISSET(sock, &fds)) {
+          
+      // Read a single byte.
+      int rv;
+      if ((rv = recv(sock , buf , 1 , 0)) < 0){
+        perror("ERROR: Could not recv().");
+        logit("ERROR: recv() failed (case 1).\n");
+        return 1;
+      }
+      else if (rv == 0) {
+        printf("\nINFO: Connection closed by the remote end\n\r");
+        logit("INFO: Connection closed by the remote end (case 1)\n");
+        return 0;
+      }
+
+      for( ilist=0; ilist<rv; ilist++ ){
+        logit( "I %08d %02x %s\n", bytes_in, buf[ilist], asciimap[buf[ilist]] );
+        ++bytes_in;
+      }
+
+      // If this is a telnet CMD, process it. 
+      if (buf[0] == CMD) {
+        
+        // Read 2 more bytes
+        len = recv(sock , buf + 1 , 2 , 0);
+        if (len < 0){
+          perror("ERROR: Could not recv() from socket.");
+          logit("ERROR: recv() from socket failed (case 2)\n");
+          return 1;
+        }
+        else if (len == 0) {
+          printf("\nINFO: Connection closed by the remote end\n\r");
+          logit("INFO: Connection closed by the remote end (case 2)\n");
+          return 0;
+        }
+
+        // Handle telnet property negotiation with host.
+        negotiate(sock, buf, 3);
+      }
+
+      // Send received data to the terminal emulator.
+      else{
+        len = 1;
+        buf[len] = '\0';
+        printf("%s", buf);
+        fflush(stdout);
+      }
+    } // Something from host.
+    
+  } // Loop forever.
+}
+
+int main(int argc , char *argv[])
+//-------------------------------
+/// @brief Implement a minimal but useful telnet client.
+/// @param argc Command line argument count.
+/// @param argv Command line word string argument pointers.
+/// @return 0 if OK, else condition code.
+{
+  struct sockaddr_in server;
+  int sock=0;
+  int port=0;
+  int ia=0;
+  int istatus=0;
+  char* host_dotted = NULL;
+  char ip_from_hostname[20];
+  char pipe_filename[80] = {0};
+  int in_fifo, fin_fifo;
+
+  printf( "\nCTELNET: Minimal telnet client V0.4 (10-JUN-2025).\n" );
+    
+  // Parse command line.
+  if( argc < 3 ){
+    fprintf(stderr, "ERROR: Usage: %s address port [--crlf --cr_after_lf --lfafternl --log --slow --pname or --tpname name]\n", argv[0]);
+    return 1;
+  }
+  host_dotted = argv[1];
+  port = atoi(argv[2]);
+
+  // If host_dotted doesn't look like an IP address, treat it as a host name.
+  if( ! isdigit(host_dotted[0]) ){
+    if( hostname_to_ip( host_dotted, ip_from_hostname ) != 0 ){
+      fprintf(stderr, "ERROR: Failed to convert host name to IP address.\n");
+      return 33;
+    }
+    host_dotted = ip_from_hostname;
+  }
+
+  snprintf(pipe_filename, 80, "/tmp/ctelnet_fifo_in");
+  for( ia=3; ia<argc; ia++ ){
+    if( !strcmp( argv[ia], "--crlf" ) ){
+      send_crlf_at_newline = 1;
+      printf("INFO: --crlf is set.\n");
+    }
+    else if( !strcmp( argv[ia], "--cr_after_lf" ) ){
+      send_cr_after_lf = 0;
+      printf("INFO: --cr_after_lf is set.\n");
+    }
+    else if( !strcmp( argv[ia], "--lfafternl" ) ){
+      show_lf_after_newline = 1;
+      printf("INFO: --lfafternl is set.\n");
+    }
+    else if( !strcmp( argv[ia], "--log" ) ){
+      char* homedir = getenv("HOME");
+      if( homedir != NULL ){
+        char fullname[1024] = {0};
+        time_t now = time(0);
+        snprintf(fullname,sizeof(fullname),"%s/ctelnet_log_%jd.txt",homedir,(intmax_t)now);
+        flog = fopen(fullname,"w");
+        printf("INFO: --log to %s is set.\n",fullname);
+      }
+      if( flog == NULL ){
+        fprintf(stderr, "ERROR: Cannot create log file.\n");
+        return 1;
+      }
+    }
+    else if( !strcmp( argv[ia], "--slow" ) ){
+      slow_pause = 5;
+    }
+    else if( ( !strcmp( argv[ia], "--pname" ) || !strcmp( argv[ia], "--tpname" ) ) && (ia < (argc-1)) ){
+      int is_tpname = ! strcmp( argv[ia], "--tpname" );
+      ++ia;
+      strncat(pipe_filename, argv[ia], sizeof(pipe_filename)-strlen(pipe_filename)-1);
+      if( is_tpname ){
+        struct timeval tv;
+        char secs_time[30] = {0};
+        long long milliseconds = 0;
+        if (gettimeofday(&tv, NULL) < 0) {
+          perror("ERROR: gettimeofday() failed.");
+          logit("ERROR: gettimeofday() failed.\n");
+          return 1;
+        }
+        milliseconds = (long long)tv.tv_sec * 1000LL + tv.tv_usec / 1000;
+        snprintf(secs_time,sizeof(secs_time),"%jd",(intmax_t)milliseconds);
+        strncat(pipe_filename, secs_time, sizeof(pipe_filename)-strlen(pipe_filename)-1);
+      }
+    }
+    else{
+      fprintf(stderr, "WARNING: Unknown option: %s (ignored)\n", argv[ia]);
+    }
+  }
+
+  // Open a FIFO (named pipe) to read from. Create it if necessary.
+  // This allows terminal input to be scripted in a crude way.
+  if( ! fifo_exists(pipe_filename) ){
+    in_fifo = mkfifo(pipe_filename, 0666);
+    if( in_fifo < 0 ){
+      perror("ERROR: Could not create input FIFO.");
+      logit("ERROR: Could not create input FIFO.\n");
+      return 1;    
+    }
+  }
+  
+  fin_fifo = open(pipe_filename, O_RDONLY|O_NONBLOCK);
+  if( fin_fifo < 0 ){
+      perror("ERROR: Could not open input FIFO.");
+      logit("ERROR: Could not open input FIFO.\n");
+      return 1;      
+  }  
+ 
+  // Create socket.
+  sock = socket(AF_INET , SOCK_STREAM , 0);
+  if (sock == -1) {
+    perror("ERROR: Could not create socket.");
+    logit("ERROR: Could not create socket.\n");
+    return 1;
+  }
+ 
+  server.sin_addr.s_addr = inet_addr(host_dotted);
+  server.sin_family = AF_INET;
+  server.sin_port = htons(port);
+ 
+  // Connect to host.
+  if (connect(sock, (struct sockaddr *)&server , sizeof(server)) < 0) {
+    perror("ERROR: Could not connect().");
+    logit("ERROR: Failed to connect().\n");
+    return 1;
+  }
+  puts("INFO: Connected ...\n");
+  logit("INFO: Connected ...\n");
+ 
+  // Set terminal to raw mode. Return to sanity on exit.
+  terminal_set();
+  atexit(terminal_reset);
+
+  // Loop getting characters from host and sending to stdout or from stdin and sending to host.
+  // NOTE: non_blocking_loop() works on all platforms, but still use standard_loop() if possible.
+#ifdef __HAIKU__  
+  istatus = non_blocking_loop(sock, fin_fifo);
+#else
+  istatus = standard_loop(sock, fin_fifo);
+#endif
+  
+  // Close socket and return condition code.
   close(sock);
-  return 0;
+  return istatus;
 }

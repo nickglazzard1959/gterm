@@ -32,6 +32,7 @@ Originally written in 2013 as a Python learning exercise.
 """
 # Imports ... Lots of them!
 import sys
+import platform
 try:
     from OpenGL.GL import GL_ALPHA
     from OpenGL.GL import GL_BGRA
@@ -183,7 +184,7 @@ except ImportError:
 try:
     from githashvalue import _current_git_desc
 except ImportError:
-    _current_git_desc="v0.8.5"
+    _current_git_desc="v0.8.7"
 
 # Track lock usage for debugging purposes.
 global_s_lock = 0  # Screen character buffer.
@@ -1189,6 +1190,37 @@ def get_application_file_name( appname, filename, exttest=None ):
     else:
         return loc
 
+#######################################################################
+# Things to get Caps Lock key state at startup and on gaining focus.  #
+# Qt does not even try to do this.                                    #
+# Ideas stolen from:                                                  #
+# https://github.com/nolenroyalty/global-capslock/blob/main/client.py #
+#######################################################################
+
+if platform.system() == "Darwin":
+    # Requires: pip install pyobjc-framework-Quartz
+    
+    from Quartz import CGEventSourceKeyState, kCGEventSourceStateHIDSystemState
+
+    def get_capslock_state():
+        return bool(CGEventSourceKeyState(kCGEventSourceStateHIDSystemState, 0x39))
+
+elif platform.system().lower().startswith("linux"):
+    # Works with both X11 and Wayland BUT only with graphical display! I.e. not via SSH.
+    
+    def get_capslock_state():
+        pattern = "/sys/class/leds/input*::capslock/brightness"
+        files = glob.glob(pattern)
+        if len(files) == 0:
+            # This will occur if trying this via SSH. Just return False.
+            return False
+        with open(files[0]) as f:
+            return f.read().strip() == "1"
+
+else:
+    print('Capslock sense detect unknown platform. Cannot happen.')
+    sys.exit(33)
+
 
 ############################
 #    GTerm Widget CLASS    #
@@ -1234,7 +1266,8 @@ class GTermWidget(QOpenGLWidget):
         # Modifier key states.
         self.ctrl = False
         self.shift = False
-        self.shiftlock = False
+        self.shiftlock = get_capslock_state()
+        # print('Initial shiftlock =',self.shiftlock)
         self.alt = False
         # Character remapping dictionaries.
         # These allow any single character to be mapped to any other.
@@ -1249,8 +1282,8 @@ class GTermWidget(QOpenGLWidget):
         self.xmargin = 20
         self.ymargin = 20
         self.maxlines = 1040 # In scroll buffer.
-        self.width_pixels = 800 # Initial drawing area size.
-        self.height_pixels = 700
+        self.width_pixels = 1024 # Initial drawing area size.
+        self.height_pixels = 768
         self.aspect = float(self.height_pixels) / float(self.width_pixels)
         self.scroll = 0
         # Mouse position tracking.
@@ -2263,7 +2296,17 @@ class GTermWidget(QOpenGLWidget):
         elif keynum == Qt.Key_Alt or keynum == Qt.Key_AltGr:
             self.alt = True
         elif keynum == Qt.Key_CapsLock:
-            self.shiftlock = not self.shiftlock
+            # CapsLock is not like other keys. You get a press event
+            # when it is turned on, but is behaves as if that is *latched*.
+            # You do not get a release event when you let go of it.
+            # You get a release event when you turn it off.
+            # This arguably makes sense, but is it true for all keyboards?
+            # And operating systems?
+            # The safest approach seems to be to get the current shift lock
+            # state "the hard way".
+            self.shiftlock = get_capslock_state()
+            if self.debuglevel > 1:
+                print('Shiftlock PRESS changed to',self.shiftlock)
         else:
             # Backspace and Return keys.
             if keynum > 131:
@@ -2320,6 +2363,11 @@ class GTermWidget(QOpenGLWidget):
             self.shift = False
         elif keynum == Qt.Key_Alt or keynum == Qt.Key_AltGr:
             self.alt = False
+        elif keynum == Qt.Key_CapsLock:
+            # See notes on CapsLock in keyPressEvent().
+            self.shiftlock = get_capslock_state()
+            if self.debuglevel > 1:
+                print('Shiftlock RELEASE changed to',self.shiftlock)            
 
     def clearScreen(self):
         """
@@ -2357,6 +2405,9 @@ class GTermWidget(QOpenGLWidget):
         if self.debuglevel > 1:
             print('@@@ got focus')
         self.havefocus = True
+        self.shiftlock = get_capslock_state()
+        if self.debuglevel > 1:
+            print('Focus in finds shiftlock =',self.shiftlock)
         #********************************************************
         self.screenlockacquire()
         self.changed = 2
@@ -3384,11 +3435,14 @@ class GTermWidget(QOpenGLWidget):
 
     def clearModifiers(self):
         """
-        Turn all modifier keys off.
+        Turn all modifier keys off. Called when scroll is set to 0,
+        e.g. with HOME key.
         """
         self.ctrl = False
         self.shift = False
-        self.shiftlock = False
+        self.shiftlock = get_capslock_state()
+        if self.debuglevel > 1:
+            print('clearModifiers finds shiftlock state is', self.shiftlock)
         self.alt = False
 
 
@@ -4054,7 +4108,7 @@ class TerminalDialog(QDialog):
         self.localEchoCheckBox = QCheckBox("Local echo")
         self.debugCheckBox = QCheckBox("Debug")
         self.modeComboBox = QComboBox()
-        self.modeComboBox.addItems(["Cyber/APL","Cyber","VMS","Unix","Unix/Alt","Windows"])
+        self.modeComboBox.addItems(["Cyber/APL","Cyber","VMS","Unix","Unix/Alt","Windows","Unix/Local"])
         self.modeComboBox.setCurrentIndex(3) # Make default Unix
         self.viewComboBox = QComboBox()
         self.viewComboBox.addItems(["Text","Graphics"])
@@ -4379,6 +4433,17 @@ class TerminalDialog(QDialog):
             self.set_arrow_keys()
             self.screen.set_terminate_char(3) # Ctrl-C
             self.screen.set_local_recall(False)
+        elif imode == 6:
+            # Unix mode with local recall.
+            self.screen.fancykeymap.clear()
+            self.screen.clearEscapeProcessors()
+            self.screen.setEscapeProcessFunc(chr(0x1b),ansi_escape)
+            self.screen.backspaceSendsDelete(True)
+            self.screen.followBackspaceWithNewline(False)
+            # Define strings for the arrow keys (VT100 strings)
+            # self.set_arrow_keys()
+            self.screen.set_terminate_char(3) # Ctrl-C
+            self.screen.set_local_recall(True)            
 
     def view(self,iview):
         """

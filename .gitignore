@@ -1,9 +1,4 @@
-# .gitignore file for BASE.
-#
-# It gets increasingly desperate...
-# This would be simpler if build directories were separated from
-# source code containing directories (yadda, yadda) but that is not
-# going to happen.
+# .gitignore file for various projects.
 #
 # Start by ignoring everything.
 *
@@ -22,10 +17,7 @@
 !depcomp
 !Makefile
 !.gitignore
-#
-# Do not ignore anything in LeeFilters. I stupidly made data
-# files without extensions there.
-!LeeFilters/
+!ob*
 #
 # Stop ignoring some autoconf things specifically.
 # Never sure what that mess actually needs TBH.
@@ -34,14 +26,7 @@
 !config.sub
 !aclocal.m4
 #
-# Stop ignoring some Xcode things specifically.
-!default.pbxuser
-!default.mode1v3
-!default.mode2v3
-!default.perspectivev3
-#
 # Start ignoring specific extensions.
-# The following will be kept in lfstgz archives.
 *.lfstgz
 *.blob
 *.pickle
@@ -55,7 +40,7 @@
 *.eps
 *.JPG
 *.EPS
-*.json
+# *.json
 *.gif
 *.dng
 *.raw
@@ -117,163 +102,10 @@
 *.backup
 #
 # Start ignoring more complex specific patterns.
-*build_log*.txt
-*tests_log*.txt
 *~
 *#
 #*#
 *.so.*
-#
-# Start ignoring specific files and directories.
-grind_log.txt
-testrectscale
-s.sh
-mainpage.dox
-basegithashvalue.py
-pyvenv.cfg
-testrectscale
-doc/human/build_latex_log.txt
-doc/basecpp_doxygen/
-doc/basepy_autodoc/
-doc/latex/
-ofxhost/doc/html/
-ofxhost/doc/latex/
-summary_funcs.txt
-base_python_cpp_xref.txt
-.coverage
 .DS_Store
-bin/
-build/
-share/
-lib/
-man/
-dist/
-DerivedData/
-xcuserdata/
-ofx_auto_code/
-ofx_auto_code/build_ifsim_ofx_plugin.sh
-HALIDE-DIST/
-doc/human/figures/
-testimages/
-testresults/
-htmlcov/
-viewer/debpkg_build/
-scaleconvbin/debpkg_build/
-sixvccbin/debpkg_build/
-stylizebin/debpkg_build/
-ifsimbin/debpkg_build/
-ofxhost/debpkg_build/
-tm_film_stocks/
-tm_film_sim/software/OFX/Codex/ifsim.ofx.bundle/
 #
-# base_gui_params.py is copied from baseips on build. Yuck.
-# This also applies to some Python source for binary builds.
-ofxhost/base_gui_params.py
-ifsimbin/ifsim.py
-ifsimbin/tm_fsim.py
-#
-# githashvalue.py is always automatically generated.
-githashvalue.py
-#
-# Some Halide auto generated code is not pattern matchable.
-halide/pipelines/debayer_cpu.cpp
-halide/pipelines/debayer_cpu.h
-halide/pipelines/debayer_cpu.schedule.h
-halide/pipelines/debayer_generator
-halide/pipelines/debayer_halide.h
-halide/pipelines/debayer_halide_library.sh
-halide/pipelines/gaussian_blur_generator
-halide/pipelines/gaussian_blur_halide.h
-halide/pipelines/gaussian_blur_halide_library.sh
-halide/pipelines/gaussian_rsg_cpu.cpp
-halide/pipelines/gaussian_rsg_cpu.h
-halide/pipelines/gaussian_rsg_cpu.schedule.h
-halide/pipelines/nl_means_cpu.cpp
-halide/pipelines/nl_means_cpu.h
-halide/pipelines/nl_means_cpu.schedule.h
-halide/pipelines/nl_means_generator
-halide/pipelines/nl_means_halide.h
-halide/pipelines/nl_means_halide_library.sh
-halide/pipelines/resize_nonuniform_generator
-halide/pipelines/resize_nu_box_cpu.h
-halide/pipelines/resize_nu_box_cpu.schedule.h
-halide/pipelines/resize_nu_cubic_cpu.h
-halide/pipelines/resize_nu_cubic_cpu.schedule.h
-halide/pipelines/resize_nu_halide.h
-halide/pipelines/resize_nu_lanczos_cpu.h
-halide/pipelines/resize_nu_lanczos_cpu.schedule.h
-halide/pipelines/resize_nu_library.sh
-halide/pipelines/resize_nu_linear_cpu.h
-halide/pipelines/resize_nu_linear_cpu.schedule.h
-halide/pipelines/resize_nu_mitchell_cpu.h
-halide/pipelines/resize_nu_mitchell_cpu.schedule.h
-halide/pipelines/resize_u_box_down_cpu.h
-halide/pipelines/resize_u_box_down_cpu.schedule.h
-halide/pipelines/resize_u_box_up_cpu.h
-halide/pipelines/resize_u_box_up_cpu.schedule.h
-halide/pipelines/resize_u_cubic_down_cpu.h
-halide/pipelines/resize_u_cubic_down_cpu.schedule.h
-halide/pipelines/resize_u_cubic_up_cpu.h
-halide/pipelines/resize_u_cubic_up_cpu.schedule.h
-halide/pipelines/resize_u_halide.h
-halide/pipelines/resize_u_lanczos_down_cpu.h
-halide/pipelines/resize_u_lanczos_down_cpu.schedule.h
-halide/pipelines/resize_u_lanczos_up_cpu.h
-halide/pipelines/resize_u_lanczos_up_cpu.schedule.h
-halide/pipelines/resize_u_library.sh
-halide/pipelines/resize_u_linear_down_cpu.h
-halide/pipelines/resize_u_linear_down_cpu.schedule.h
-halide/pipelines/resize_u_linear_up_cpu.h
-halide/pipelines/resize_u_linear_up_cpu.schedule.h
-halide/pipelines/resize_u_mitchell_down_cpu.h
-halide/pipelines/resize_u_mitchell_down_cpu.schedule.h
-halide/pipelines/resize_u_mitchell_up_cpu.h
-halide/pipelines/resize_u_mitchell_up_cpu.schedule.h
-halide/pipelines/debayer_metal.cpp
-halide/pipelines/debayer_opencl.cpp
-halide/pipelines/nl_means_metal.cpp
-halide/pipelines/nl_means_opencl.cpp
-#
-# Some extensions items. The .h files are a bit mysterious TBH.
-extensions/DNG/dng_sdk_1_4/libjpeg/Makefile
-extensions/DNG/dng_sdk_1_4/libjpeg/config.status
-extensions/jpeg-2000/openjpeg-master/
-extensions/jpeg-local/jpeg-ijg/
-extensions/jpeg-local/jpeg-jpt/
-extensions/jpeg-lossless/charls-1.x-master/
-extensions/openexr/ilmbase-2.1.0/Half/eLut.h
-extensions/openexr/ilmbase-2.1.0/Half/toFloat.h 
-extensions/openexr/ilmbase-2.1.0/Half/Makefile
-extensions/openexr/ilmbase-2.1.0/HalfTest/Makefile
-extensions/openexr/ilmbase-2.1.0/Iex/Makefile
-extensions/openexr/ilmbase-2.1.0/IexMath/Makefile
-extensions/openexr/ilmbase-2.1.0/IexTest/Makefile
-extensions/openexr/ilmbase-2.1.0/IlmBase.pc
-extensions/openexr/ilmbase-2.1.0/IlmThread/Makefile
-extensions/openexr/ilmbase-2.1.0/Imath/Makefile
-extensions/openexr/ilmbase-2.1.0/ImathTest/Makefile
-extensions/openexr/ilmbase-2.1.0/Makefile
-extensions/openexr/ilmbase-2.1.0/config.status
-extensions/openexr/ilmbase-2.1.0/config/IlmBaseConfig.h
-extensions/openexr/ilmbase-2.1.0/config/Makefile
-extensions/openexr/ilmbase-2.1.0/libtool
-extensions/openexr/ilmbase-2.1.0/vc/Makefile
-extensions/openexr/openexr-2.1.0/IlmImf/Makefile
-extensions/openexr/openexr-2.1.0/IlmImfExamples/Makefile
-extensions/openexr/openexr-2.1.0/IlmImfFuzzTest/Makefile
-extensions/openexr/openexr-2.1.0/IlmImfTest/Makefile
-extensions/openexr/openexr-2.1.0/Makefile
-extensions/openexr/openexr-2.1.0/config.status
-extensions/openexr/openexr-2.1.0/config/Makefile
-extensions/openexr/openexr-2.1.0/config/OpenEXRConfig.h
-extensions/openexr/openexr-2.1.0/doc/Makefile
-extensions/openexr/openexr-2.1.0/exrenvmap/Makefile
-extensions/openexr/openexr-2.1.0/exrheader/Makefile
-extensions/openexr/openexr-2.1.0/exrmakepreview/Makefile
-extensions/openexr/openexr-2.1.0/exrmaketiled/Makefile
-extensions/openexr/openexr-2.1.0/exrmultipart/Makefile
-extensions/openexr/openexr-2.1.0/exrmultiview/Makefile
-extensions/openexr/openexr-2.1.0/exrstdattr/Makefile
-extensions/openexr/openexr-2.1.0/exrstdattr/exrstdattr
-extensions/openexr/openexr-2.1.0/libtool
-extensions/openexr/openexr-2.1.0/vc/Makefile
+# EOF
