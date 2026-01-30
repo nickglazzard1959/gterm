@@ -55,14 +55,11 @@ Installation on Debian/Ubuntu Linux
 For a completely "empty" machine:
 
 1. Install system wide binary pre-requisites with APT.
-- `python3 --version` (note version, must be 3.10 or newer)
-- `sudo apt install python3-pip`
-- `sudo apt install python3.xx-venv` (replace `xx` with version)
 - `./aptinstalls.sh`
 
 2. Create a Python virtual environment for running GTerm.
-- `python3 -m venv ~/gtermenv`
-- `source ~/gtermenv/bin/activate`
+- `python3 -m venv ~/genv`
+- `source ~/genv/bin/activate`
 - `python -m pip install --upgrade pip`
 
 3. Install GTerm in that virtual environment.
@@ -81,7 +78,8 @@ guide.
 Installation on macOS
 ---------------------
 
-For a completely empty machine but with Homebrew already installed:
+For a completely empty machine but with a working C/C++ development
+environment and Homebrew already installed:
 
 1. Install binary pre-requisites with Homebrew.
 - `brew install portaudio`
@@ -89,8 +87,8 @@ For a completely empty machine but with Homebrew already installed:
 - `brew install cairo`
 
 2. Create a Python virtual environment for running GTerm.
-- `python3 -m venv ~/gtermenv`
-- `source ~/gtermenv/bin/activate`
+- `python3 -m venv ~/genv`
+- `source ~/genv/bin/activate`
 - `python -m pip install --upgrade pip`
 
 3. Install GTerm in that virtual environment.
@@ -105,8 +103,8 @@ Running
 
 GTerm should be run from a "shell" in a terminal window.
 
-- Ensure the gtermenv venv is active, for example with:
-  `source ~/gtermenv/bin/activate`
+- Ensure the gterm venv is active, for example with:
+  `source ~/genv/bin/activate`
 - Typing `gterm` will then launch GTerm.
 
 Configuration
